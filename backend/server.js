@@ -5,7 +5,8 @@ const port = 3001;
 
 app.use(express.json());
 
-mongoose.connect('your_mongodb_connection_string', { useNewUrlParser: true, useUnifiedTopology: true });
+const uri = "mongodb+srv://tjiauwj675:b2w9q9VJBEte6YLQ@cluster0.tgl5cve.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0";
+mongoose.connect(uri, { useNewUrlParser: true, useUnifiedTopology: true });
 
 const itemSchema = new mongoose.Schema({
   name: String,
