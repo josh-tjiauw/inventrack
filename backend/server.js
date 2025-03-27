@@ -27,6 +27,16 @@ app.post('/api/inventory', async (req, res) => {
   res.status(201).json(newItem);
 });
 
+app.put('/api/inventory/:id', async (req, res) => {
+  const updatedItem = await Item.findByIdAndUpdate(req.params.id, req.body, { new: true });
+  res.json(updatedItem);
+});
+
+app.delete('/api/inventory/:id', async (req, res) => {
+  await Item.findByIdAndDelete(req.params.id);
+  res.status(204).send();
+});
+
 app.listen(port, () => {
   console.log(`Server running on port ${port}`);
 });
