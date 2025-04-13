@@ -1,42 +1,40 @@
 const express = require('express');
 const mongoose = require('mongoose');
-const app = express();
-const port = 3001;
+const cors = require('cors');
+require('dotenv').config();
 
+const app = express();
+app.use(cors());
 app.use(express.json());
 
-const uri = "mongodb+srv://tjiauwj675:b2w9q9VJBEte6YLQ@cluster0.tgl5cve.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0";
-mongoose.connect(uri, { useNewUrlParser: true, useUnifiedTopology: true });
+mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/inventoryDB', {
+  useNewUrlParser: true,
+  useUnifiedTopology: true,
+});
+const db = mongoose.connection;
+db.on('error', console.error.bind(console, 'MongoDB connection error:'));
+db.once('open', () => console.log('Connected to MongoDB'));
 
-const itemSchema = new mongoose.Schema({
-  name: String,
-  quantity: Number,
-  price: Number
+const Item = require('./models/Item');
+
+app.get('/api/items', async (req, res) => {
+  try {
+    const items = await Item.find();
+    res.json(items);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
 });
 
-const Item = mongoose.model('Item', itemSchema);
-
-app.get('/api/inventory', async (req, res) => {
-  const items = await Item.find();
-  res.json(items);
-});
-
-app.post('/api/inventory', async (req, res) => {
+app.post('/api/items', async (req, res) => {
   const newItem = new Item(req.body);
-  await newItem.save();
-  res.status(201).json(newItem);
+  try {
+    const savedItem = await newItem.save();
+    res.status(201).json(savedItem);
+  } catch (err) {
+    res.status(400).json({ message: err.message });
+  }
 });
 
-app.put('/api/inventory/:id', async (req, res) => {
-  const updatedItem = await Item.findByIdAndUpdate(req.params.id, req.body, { new: true });
-  res.json(updatedItem);
-});
-
-app.delete('/api/inventory/:id', async (req, res) => {
-  await Item.findByIdAndDelete(req.params.id);
-  res.status(204).send();
-});
-
-app.listen(port, () => {
-  console.log(`Server running on port ${port}`);
-});
+const PORT = process.env.PORT || 5000;
+app.listen(PORT, () => console.log(`Server running on port ${PORT}`));

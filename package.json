@@ -3,12 +3,17 @@
   "version": "0.1.0",
   "private": true,
   "dependencies": {
+    "cors": "^2.8.5",
     "cra-template": "1.2.0",
+    "dotenv": "^16.5.0",
+    "express": "^5.1.0",
     "mongodb": "^6.15.0",
+    "mongoose": "^8.13.2",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
     "react-router-dom": "^7.5.0",
     "react-scripts": "5.0.1",
+    "recharts": "^2.15.2",
     "web-vitals": "^4.2.4"
   },
   "scripts": {
