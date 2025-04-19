@@ -1,18 +1,24 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
+import axios from 'axios';
 import InventoryItem from './InventoryItem';
 
-function InventoryList({ inventory, deleteItem }) {
-  if (inventory.length === 0) {
-    return <div>No items in inventory.</div>;
-  }
+const InventoryList = () => {
+  const [items, setItems] = useState([]);
+
+  useEffect(() => {
+    axios.get('http://localhost:5000/api/items')
+      .then(res => setItems(res.data))
+      .catch(err => console.error(err));
+  }, []);
 
   return (
     <div>
-      {inventory.map(item => (
-        <InventoryItem key={item._id} item={item} deleteItem={deleteItem} />
+      <h2>Inventory List</h2>
+      {items.map(item => (
+        <InventoryItem key={item._id} item={item} />
       ))}
     </div>
   );
-}
+};
 
 export default InventoryList;

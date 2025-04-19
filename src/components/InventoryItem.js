@@ -1,12 +1,15 @@
 import React from 'react';
 
-function InventoryItem({ item, deleteItem }) {
+const InventoryItem = ({ item }) => {
   return (
-    <div>
-      <span>{item.name} - {item.quantity} - ${item.price}</span>
-      <button onClick={() => deleteItem(item._id)}>Delete</button>
+    <div className="item-card">
+      <h3>{item.name}</h3>
+      <p>Weight: {item.weight} kg</p>
+      <p>Quantity: {item.quantity}</p>
+      <p>Location: {item.storageLocation}</p>
+      <button>View Details</button>
     </div>
   );
-}
+};
 
 export default InventoryItem;
