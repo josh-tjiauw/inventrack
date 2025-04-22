@@ -1,17 +1,48 @@
 import React from 'react';
-import { Link } from 'react-router-dom';
-import './styles.css';
+import { NavLink } from 'react-router-dom';
+import './Navbar.css';
 
-function Navbar() {
+const Navbar = () => {
   return (
     <nav className="navbar">
-      <ul>
-        <li><Link to="/">Home</Link></li>
-        <li><Link to="/about">About Us</Link></li>
-        <li><Link to="/dashboard">Dashboard</Link></li>
-      </ul>
+      <div className="navbar-container">
+        <div className="navbar-brand">
+          <NavLink to="/" className="brand-link">
+            Inventrack
+          </NavLink>
+        </div>
+        
+        <div className="navbar-links">
+          <NavLink 
+            to="/" 
+            className={({ isActive }) => isActive ? "nav-link active" : "nav-link"}
+          >
+            Home
+          </NavLink>
+          
+          <NavLink 
+            to="/dashboard" 
+            className={({ isActive }) => isActive ? "nav-link active" : "nav-link"}
+          >
+            Dashboard
+          </NavLink>
+          
+          <NavLink 
+            to="/about" 
+            className={({ isActive }) => isActive ? "nav-link active" : "nav-link"}
+          >
+            About Us
+          </NavLink>
+        </div>
+        
+        <div className="navbar-mobile-menu">
+          <button className="mobile-menu-button">
+            <span className="menu-icon">☰</span>
+          </button>
+        </div>
+      </div>
     </nav>
   );
-}
+};
 
 export default Navbar;

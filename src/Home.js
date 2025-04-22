@@ -1,5 +1,6 @@
 import React from 'react';
 import './styles.css';
+import StorageGUI from './components/storageGui';
 
 function Home() {
   return (
@@ -13,6 +14,7 @@ function Home() {
         <p>Our system provides real-time tracking, automated reporting, and seamless integration with your existing tools.</p>
         <p>Join us to streamline your inventory processes and boost your business efficiency.</p>
       </div>
+      <StorageGUI />
     </div>
   );
 }
