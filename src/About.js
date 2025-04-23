@@ -12,7 +12,7 @@ function About() {
     <div className="about-us-container">
       <header className="about-header">
         <h1>About Our Inventory Management System</h1>
-        <p className="subtitle">Streamlining your business operations since 2023</p>
+        <p className="subtitle">Streamlining your business operations since 2025</p>
       </header>
 
       <section className="mission-section">
@@ -36,8 +36,8 @@ function About() {
             <p>Get insights into your inventory trends and patterns.</p>
           </div>
           <div className="feature-card">
-            <h3>Multi-location</h3>
-            <p>Manage inventory across multiple warehouses from one dashboard.</p>
+            <h3>Stockout Alerts</h3>
+            <p>Never worry about stocks being empty with our automatic alert system.</p>
           </div>
           <div className="feature-card">
             <h3>User-friendly</h3>
@@ -64,8 +64,8 @@ function About() {
         <h2>Contact Us</h2>
         <p>Have questions or need support? We're here to help!</p>
         <div className="contact-info">
-          <p>Email: <a href="mailto:support@inventoryapp.com">support@inventoryapp.com</a></p>
-          <p>Phone: (555) 123-4567</p>
+          <p>Email: <a href="mailto:tjiauwj675@csu.fullerton.edu">tjiauwj675@csu.fullerton.edu</a></p>
+          <p>Phone: (949) 463-8518</p>
           <p>Office Hours: Mon-Fri, 9AM-5PM EST</p>
         </div>
       </section>
