@@ -1,70 +1,138 @@
-# Getting Started with Create React App
+# InvenTrack - Inventory Management System
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+## Table of Contents
+- [Overview](#overview)
+- [Features](#features)
+- [Technologies](#technologies)
+- [Installation](#installation)
+- [Usage](#usage)
+- [API Endpoints](#api-endpoints)
 
-## Available Scripts
+## Overview
 
-In the project directory, you can run:
+InvenTrack is a full-stack inventory management application designed to help businesses track stock levels, manage storage locations, and optimize warehouse operations. The system provides real-time visibility into inventory across multiple storage shelves with AI-powered recommendations for optimal item placement.
 
-### `npm start`
+## Features
 
-Runs the app in the development mode.\
-Open [http://localhost:3000](http://localhost:3000) to view it in your browser.
+- 📊 Real-time inventory dashboard
+- 📦 Shipment receiving system
+- 🚚 Export/shipping management
+- 🧠 AI-powered storage recommendations
+- 📈 Capacity visualization
+- 🔔 Low stock alerts
+- 📱 Responsive design
+- 🔄 Automatic data synchronization
 
-The page will reload when you make changes.\
-You may also see any lint errors in the console.
+## Technologies
 
-### `npm test`
+### Frontend
+- HTML
+- CSS3/Flexbox
+- Bootstrap
+- React.js
+- React Router
 
-Launches the test runner in the interactive watch mode.\
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
+### Backend
+- Node.js
+- Express.js
+- Axios
+- MongoDB/Mongoose
+- OpenAI API (for recommendations)
 
-### `npm run build`
+### Development Tools
+- Git
+- Postman (API testing)
+- Visual Studio Code
+- Heroku (Deployment)
 
-Builds the app for production to the `build` folder.\
-It correctly bundles React in production mode and optimizes the build for the best performance.
+## Installation
 
-The build is minified and the filenames include the hashes.\
-Your app is ready to be deployed!
+### Prerequisites
+- Node.js (v16 or higher)
+- npm (v8 or higher)
+- MongoDB Atlas account or local MongoDB instance
+- OpenAI API key (for AI features)
 
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
+### Setup Instructions
 
-### `npm run eject`
+1. **Clone the repository**
+   git clone https://github.com/yourusername/inventrack.git
+   cd inventrack
 
-**Note: this is a one-way operation. Once you `eject`, you can't go back!**
+2. **Install frontend dependencies**
+    npm install
+3. **Set up the Backend**
+    cd backend
+    npm install
+4. **.env File setup**
+    Create a .env file in the backend directory with:
+    MONGODB_URI=your_mongodb_connection_string
+    OPENAI_API_KEY=your_openai_api_key
+    PORT=5000
 
-If you aren't satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
+### Usage
+To run the application:
+1. **Start backend server**
+    cd backend
+    node server.js
 
-Instead, it will copy all the configuration files and the transitive dependencies (webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you're on your own.
+2. **Start frontend server**
+    Open a new terminal
+    cd /inventrack
+    npm start
 
-You don't have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn't feel obligated to use this feature. However we understand that this tool wouldn't be useful if you couldn't customize it when you are ready for it.
+3. **Browser**
+    If it hasn't already directed you, open a browser and input http://localhost:3000
 
-## Learn More
+## Key Functionality
 
-You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
+### Dashboard
+- **Real-time Inventory Overview**: View current stock levels across all shelves
+- **Capacity Visualization**: Color-coded bars show fill percentage (green <70%, yellow 70-90%, red >90%)
+- **Low Stock Alerts**: Automatic warnings for shelves below 20% capacity
+- **Quick Actions**: One-click access to receive/export shipments
 
-To learn React, check out the [React documentation](https://reactjs.org/).
+![Dashboard View](./screenshots/dashboard.png)
 
-### Code Splitting
+### Receive Shipments
+1. **Item Entry**:
+   - Select category (Electronics, Clothing, Food, etc.)
+   - Enter item description
+2. **AI Recommendations**:
+   - System suggests top 3 storage locations
+   - Shows reasoning and confidence levels
+3. **Storage Assignment**:
+   - Select shelf and confirm storage
+   - Automatic capacity updates
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/code-splitting](https://facebook.github.io/create-react-app/docs/code-splitting)
+![Receive Shipment](./screenshots/receive.png)
 
-### Analyzing the Bundle Size
+### Export Shipments
+1. **Shelf Selection**: Choose source shelf
+2. **Item Selection**:
+   - Checkbox interface for multiple items
+   - Clear visual indicators of selected items
+3. **Destination Tracking**:
+   - Record where items are being shipped
+   - Automatic inventory deduction
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size](https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size)
+![Export Shipment](./screenshots/export.png)
 
-### Making a Progressive Web App
+### AI-Powered Features
+- **Smart Storage Recommendations**:
+  - Considers category matching
+  - Analyzes current shelf capacity
+  - Learns from existing item groupings
+- **Capacity Optimization**:
+  - Prevents overfilling shelves
+  - Balances inventory distribution
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app](https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app)
+## API Endpoints
 
-### Advanced Configuration
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/advanced-configuration](https://facebook.github.io/create-react-app/docs/advanced-configuration)
-
-### Deployment
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/deployment](https://facebook.github.io/create-react-app/docs/deployment)
-
-### `npm run build` fails to minify
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify](https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify)
+| Endpoint | Method | Description | Requires |
+|----------|--------|-------------|----------|
+| `/api/shelves` | GET | List all shelves | - |
+| `/api/shelves/:id` | GET | Get shelf details | Shelf ID |
+| `/api/shelves/:id/add-item` | PUT | Add item to shelf | Shelf ID, Item Data |
+| `/api/shipments/export` | POST | Record export | Shipment Data |
+| `/api/ai/recommend-storage` | POST | Get storage recommendations | Item Data |
