@@ -2,8 +2,11 @@ require('dotenv').config();
 const express = require('./node_modules/express');
 const mongoose = require('./node_modules/mongoose');
 const cors = require('./node_modules/cors');
-
 const app = express();
+
+import('./routes/ai.js').then((module) => {
+  app.use('/api/ai', module.default);
+});
 
 // Middleware
 app.use(cors());

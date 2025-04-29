@@ -25,6 +25,28 @@ router.get('/:id', async (req, res, next) => {
   }
 });
 
+// Add item to shelf
+router.put('/:id/add-item', async (req, res) => {
+    try {
+      const shelf = await Shelf.findById(req.params.id);
+      if (!shelf) {
+        return res.status(404).json({ message: 'Shelf not found' });
+      }
+  
+      if (shelf.current >= shelf.capacity) {
+        return res.status(400).json({ message: 'Shelf is full' });
+      }
+  
+      shelf.items.push(req.body.item);
+      shelf.current += 1;
+      await shelf.save();
+  
+      res.json(shelf);
+    } catch (err) {
+      res.status(500).json({ message: err.message });
+    }
+  });
+  
 // SEED initial data
 router.post('/seed', async (req, res, next) => {
   const sampleShelves = [
