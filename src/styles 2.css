@@ -1,0 +1,48 @@
+body {
+  margin: 0;
+  font-family: Arial, sans-serif;
+}
+
+.navbar {
+  background-color: #333;
+  padding: 10px;
+}
+
+.navbar ul {
+  list-style-type: none;
+  padding: 0;
+}
+
+.navbar ul li {
+ display: inline;
+  margin-right: 10px;
+}
+
+.navbar ul li a {
+  text-decoration: none;
+  color: white;
+}
+
+.navbar ul li a:hover {
+  text-decoration: underline;
+}
+
+.home {
+  background-image: url('../public/media/background.png');
+  background-size: cover;
+  background-position: center;
+  color: white;
+  text-align: center;
+  padding: 50px 20px;
+}
+
+.hero {
+  background: rgba(0, 0, 0, 0.5);
+  padding: 20px;
+}
+
+.content {
+  background: rgba(0, 0, 0, 0.7);
+  padding: 20px;
+  margin-top: 20px;
+}
