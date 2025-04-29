@@ -40,6 +40,13 @@ const Navbar = () => {
           >
             Receive Shipment
           </NavLink>
+
+          <NavLink 
+            to="/export" 
+            className={({ isActive }) => isActive ? "nav-link active" : "nav-link"}
+          >
+            Export Shipment
+          </NavLink>
         </div>
         
         <div className="navbar-mobile-menu">

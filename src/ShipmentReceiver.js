@@ -25,6 +25,7 @@ const ShipmentReceiver = () => {
         const response = await axios.get('/api/shelves', {
           timeout: 5000
         });
+        console.log('Fetched shelves:', response.data); // Debugging line
         setShelves(response.data);
       } catch (err) {
         setError('Failed to load shelf data. Please refresh or check backend connection.');
@@ -39,36 +40,29 @@ const ShipmentReceiver = () => {
     
     setLoading(true);
     setError(null);
-    
     try {
       const response = await axios.post('/api/ai/recommend-storage', {
         itemCategory: selectedCategory,
         itemDescription: itemDescription,
-        shelves: shelves // Include shelves in the request
-      }, {
-        timeout: 10000
+        shelves: shelves.filter(s => s.current < s.capacity)
       });
-  
-      if (!response.data?.recommendations) {
-        throw new Error('Invalid response format from AI service');
-      }
-  
-      setRecommendations(response.data.recommendations);
-      
+      const enhancedRecs = response.data.recommendations
+        .map(rec => ({
+          ...shelves.find(s => s._id === rec.shelfId),
+          aiReason: rec.reason,
+          confidence: rec.confidence
+        }))
+        .filter(rec => rec); 
+
+      setRecommendations(enhancedRecs);
     } catch (err) {
-      console.error('AI Recommendation Error:', err);
-      
-      const errorMessage = err.response?.status === 429
-        ? 'AI service overloaded. Please try again later.'
-        : 'AI service unavailable. Using fallback recommendations.';
-      
-      setError(errorMessage);
+      console.error('AI recommendation error:', err);
+      setError('AI service unavailable. Using fallback recommendations.');
       getFallbackRecommendations();
     } finally {
       setLoading(false);
     }
   };
-
   const getFallbackRecommendations = () => {
     const suitableShelves = shelves
       .filter(shelf => {
@@ -77,18 +71,12 @@ const ShipmentReceiver = () => {
         return isCategoryMatch && hasSpace;
       })
       .sort((a, b) => (b.capacity - b.current) - (a.capacity - a.current))
-      .slice(0, 3)
-      .map(shelf => ({
-        shelfId: shelf._id,
-        shelfName: shelf.name,
-        reason: `Fallback recommendation based on category match and available space`,
-        confidence: 0.8,
-        ...shelf // Include all shelf properties
-      }));
+      .slice(0, 3);
 
     setRecommendations(suitableShelves);
   };
 
+  // Store item in selected shelf
   const storeItem = async (shelfId) => {
     try {
       await axios.put(`/api/shelves/${shelfId}/add-item`, {
@@ -116,12 +104,12 @@ const ShipmentReceiver = () => {
     setItemDescription('');
     setRecommendations([]);
   };
-
   const getFillPercentage = (current, capacity) => {
-    return capacity ? Math.round((current / capacity) * 100) : 0;
+    //console.log('Calculating fill percentage:', { current, capacity }); // Debugging line
+    return Math.round((current / capacity) * 100);
   };
-
   const getSpaceLeft = (current, capacity) => {
+    //console.log('Calculating space left:', { current, capacity }); // Debugging line
     return capacity - current;
   };
 
@@ -170,83 +158,83 @@ const ShipmentReceiver = () => {
         </button>
       </div>
 
+      {/* Error Message Display */}
       {error && (
         <div className="error-message">
           {error}
         </div>
       )}
 
-{recommendations.length > 0 && (
-  <div className="recommendations-section">
-    <h2>Recommended Storage Locations</h2>
-    <p className="recommendation-subtitle">
-      Based on item type and available capacity
-    </p>
-    
-    <div className="recommendations-grid">
-      {recommendations.map((rec) => {
-        // Find the matching shelf in our shelves data
-        const shelf = shelves.find(s => s._id === rec.shelfId) || rec;
-        
-        // Calculate values with proper fallbacks
-        const current = shelf.current || 0;
-        const capacity = shelf.capacity || 1; // Prevent division by zero
-        const spaceLeft = capacity - current;
-        const percentage = Math.round((current / capacity) * 100);
-
-        return (
-          <div key={rec.shelfId || shelf._id} className="shelf-recommendation">
-            <div className="shelf-info">
-              <h3>{shelf.name || rec.shelfName}</h3>
-              <div className="shelf-meta">
-                <span>Category: {shelf.category || 'General'}</span>
-                <span>Space left: {spaceLeft} units</span>
-              </div>
-              
-              {rec.reason && (
-                <div className="ai-recommendation-details">
-                  <p className="ai-reason">"{rec.reason}"</p>
-                  <div className="confidence-meter">
-                    <div 
-                      className="confidence-fill" 
-                      style={{ width: `${(rec.confidence || 0.8) * 100}%` }}
-                    />
-                    <span className="confidence-value">
-                      {((rec.confidence || 0.8) * 100).toFixed(0)}% confidence
-                    </span>
+      {/* Recommendation Display - Placed here in the component */}
+      {recommendations.length > 0 && (
+        <div className="recommendations-section">
+          <h2>Recommended Storage Locations</h2>
+          <p className="recommendation-subtitle">
+            Based on item type and available capacity
+          </p>
+          
+          <div className="recommendations-grid">
+            {recommendations.map(shelf => {
+              console.log("shelf",shelf)
+              const percentage = getFillPercentage(shelves[0].current, shelves[0].capacity);
+              const spaceLeft = getSpaceLeft(shelves.current, shelves.capacity);
+              console.log('Shelf data:', shelf); // Debugging line
+              return (
+                <div key={shelves._id} className="shelf-recommendation">
+                  <div className="shelf-info">
+                    <h3>{shelves.name}</h3>
+                    <div className="shelf-meta">
+                      <span>Category: {shelf.category}</span>
+                      <span>Space left: {spaceLeft} units</span>
+                    </div>
+                    
+                    {/* AI Recommendation Details */}
+                    {shelf.aiReason && (
+                      <div className="ai-recommendation-details">
+                        <p className="ai-reason">"{shelf.aiReason}"</p>
+                        <div className="confidence-meter">
+                          <div 
+                            className="confidence-fill" 
+                            style={{ width: `${(shelf.confidence || 0.8) * 100}%` }}
+                          />
+                          <span className="confidence-value">
+                            {(shelf.confidence * 100)?.toFixed(0) || '80'}% confidence
+                          </span>
+                        </div>
+                      </div>
+                    )}
+                    
+                    {/* Capacity Visualization */}
+                    <div className="capacity-visualization">
+                      <div className="capacity-bar">
+                        <div 
+                          className="fill-level" 
+                          style={{ 
+                            width: `${percentage}%`,
+                            backgroundColor: percentage >= 90 ? '#F44336' : 
+                                           percentage >= 70 ? '#FFC107' : '#4CAF50'
+                          }}
+                        />
+                      </div>
+                      <span className="capacity-percentage">{percentage}% full</span>
+                    </div>
                   </div>
+                  
+                  <button 
+                    onClick={() => storeItem(shelf._id)}
+                    className="store-button"
+                    disabled={loading}
+                  >
+                    Store Here!
+                  </button>
                 </div>
-              )}
-              
-              <div className="capacity-visualization">
-                <div className="capacity-bar">
-                  <div 
-                    className="fill-level" 
-                    style={{ 
-                      width: `${percentage}%`,
-                      backgroundColor: percentage >= 90 ? '#F44336' : 
-                                     percentage >= 70 ? '#FFC107' : '#4CAF50'
-                    }}
-                  />
-                </div>
-                <span className="capacity-percentage">{percentage}% full</span>
-              </div>
-            </div>
-            
-            <button 
-              onClick={() => storeItem(rec.shelfId || shelf._id)}
-              className="store-button"
-              disabled={loading}
-            >
-              Store Here!
-            </button>
+              );
+            })}
           </div>
-        );
-      })}
-    </div>
-  </div>
-)}
+        </div>
+      )}
       
+      {/* Success Message */}
       {success && (
         <div className="success-message">
           <span className="success-icon">✓</span>

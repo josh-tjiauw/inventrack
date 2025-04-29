@@ -2,24 +2,21 @@ const express = require('express');
 const Shelf = require('../models/Shelf');
 const router = express.Router();
 
-// Error handling wrapper
 const asyncHandler = (fn) => (req, res, next) => {
   Promise.resolve(fn(req, res, next)).catch(next);
 };
 
-// GET all shelves - formatted for frontend
+// GET all shelves
 router.get('/', asyncHandler(async (req, res) => {
   const shelves = await Shelf.find().sort({ name: 1 }).lean();
   
-  // Transform data to match frontend expectations
   const formattedShelves = shelves.map(shelf => ({
     _id: shelf._id,
     name: shelf.name,
-    category: shelf.category || 'General', // Ensure category exists
+    category: shelf.category || 'General',
     capacity: shelf.capacity,
     current: shelf.current,
     items: shelf.items,
-    // Add any additional fields your frontend expects
   }));
 
   res.json(formattedShelves);
@@ -39,12 +36,12 @@ router.get('/:id', asyncHandler(async (req, res) => {
     success: true,
     data: {
       ...shelf,
-      category: shelf.category || 'General' // Ensure category exists
+      category: shelf.category || 'General'
     }
   });
 }));
 
-// Add item to shelf - updated to match frontend expectations
+// Add item to shelf 
 router.put('/:id/add-item', asyncHandler(async (req, res) => {
   const { item } = req.body;
   
@@ -88,64 +85,64 @@ router.put('/:id/add-item', asyncHandler(async (req, res) => {
   });
 }));
 
-// SEED initial data - updated with categories
+// Example items for now
 router.post('/seed', asyncHandler(async (req, res) => {
   const sampleShelves = [
     { 
-      name: 'Electronics A1', 
+      name: 'A1-Electronics', 
       category: 'Electronics',
-      capacity: 100, 
-      current: 15, 
+      capacity: 10, 
+      current: 2, 
       items: ['Laptop', 'Monitor'] 
     },
     { 
-      name: 'Electronics A2', 
+      name: 'A2-Electronics', 
       category: 'Electronics',
-      capacity: 100, 
-      current: 45, 
-      items: ['Keyboard', 'Mouse', 'Headphones'] 
+      capacity: 10, 
+      current: 4, 
+      items: ['Keyboard', 'Mouse', 'Headphones', 'iPhone'] 
     },
     { 
-      name: 'Clothing B1', 
+      name: 'B1-Clothing', 
       category: 'Clothing',
-      capacity: 100, 
-      current: 90, 
-      items: ['T-shirt', 'Jeans', 'Jacket', 'Socks'] 
+      capacity: 10, 
+      current: 9, 
+      items: ['T-shirt', 'Jeans', 'Jacket', 'Socks', 'Mittens', 'Scarf', 'Pants', 'Dress', 'Suit'] 
     },
     { 
-      name: 'Clothing B2', 
+      name: 'B2-Clothing', 
       category: 'Clothing',
-      capacity: 100, 
+      capacity: 10, 
       current: 0, 
       items: [] 
     },
     { 
-      name: 'Food C1', 
+      name: 'C1-Food', 
       category: 'Food',
-      capacity: 100, 
-      current: 65, 
-      items: ['Canned Goods', 'Pasta'] 
+      capacity: 10, 
+      current: 6, 
+      items: ['Canned Soup', 'Pasta', 'Ham', 'Pizza', 'Burger', 'Salad'] 
     },
     { 
-      name: 'Tools C2', 
+      name: 'C2-Tools', 
       category: 'Tools',
-      capacity: 100, 
-      current: 100, 
-      items: ['Hammer', 'Screwdriver', 'Wrench', 'Pliers'] 
+      capacity: 10, 
+      current: 10, 
+      items: ['Hammer', 'Screwdriver', 'Wrench', 'Pliers', 'Scissors', 'Brush', 'Grabber', 'Gloves', 'Racket', 'Paint Bucket'] 
     },
     { 
-      name: 'Furniture D1', 
+      name: 'D1-Furniture', 
       category: 'Furniture',
-      capacity: 100, 
-      current: 30, 
-      items: ['Chair', 'Table'] 
+      capacity: 10, 
+      current: 3, 
+      items: ['Chair', 'Table', 'Table Cover'] 
     },
     { 
-      name: 'Miscellaneous D2', 
+      name: 'D2-Miscellaneous', 
       category: 'Miscellaneous',
-      capacity: 100, 
-      current: 75, 
-      items: ['Box', 'Container'] 
+      capacity: 10, 
+      current: 7, 
+      items: ['Box', 'Container', 'Misc1', 'Misc2', 'Misc3', 'Misc4', 'Misc5'] 
     }
   ];
 

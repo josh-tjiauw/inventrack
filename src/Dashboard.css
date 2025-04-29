@@ -239,6 +239,13 @@
   border-radius: 12px;
   font-size: 0.8rem;
   font-weight: bold;
+  opacity: 1; 
+  transition: opacity 0.2s ease; 
+}
+
+.shelf-card.low-stock {
+  position: relative;
+  border: 2px solid #FF9800;
 }
 
 /* Responsive Design */

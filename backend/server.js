@@ -1,6 +1,7 @@
 require('dotenv').config();
 const express = require('./node_modules/express');
 const mongoose = require('./node_modules/mongoose');
+const shipmentRoutes = require('./routes/shipments');
 const cors = require('./node_modules/cors');
 const app = express();
 
@@ -12,6 +13,7 @@ import('./routes/ai.js').then((module) => {
 app.use(cors());
 app.use(express.json());
 app.use('/api/shelves', require('./routes/shelves'));
+app.use('/api/shipments', shipmentRoutes);
 
 // Database Connection
 const connectDB = async () => {

@@ -31,7 +31,7 @@ const Dashboard = () => {
         // Check for low stock shelves
         const lowStock = response.data.filter(shelf => {
           const percentage = (shelf.current / shelf.capacity) * 100;
-          return percentage < 20 && percentage > 0; // Below 20% but not empty
+          return percentage <= 20
         });
         
         setLowStockShelves(lowStock);
@@ -67,10 +67,10 @@ const Dashboard = () => {
     if (percentage === 0) {
       status = 'Empty';
       color = '#4CAF50'; // Green
-    } else if (percentage >= 90) {
+    } else if (percentage == 100) {
       status = 'Full';
       color = '#F44336'; // Red
-    } else if (percentage < 20) {
+    } else if (percentage <= 20) {
       status = 'Low Stock';
       color = '#FF5722'; // Orange for low stock
     } else {
@@ -106,7 +106,7 @@ const Dashboard = () => {
           <div className="alert-content">
             <span className="alert-icon">⚠️</span>
             <span>
-              Low stock alert: {lowStockShelves.length} shelf{lowStockShelves.length !== 1 ? 's' : ''} below 20% capacity
+              Low Stock Alert: {lowStockShelves.length} Shel{lowStockShelves.length !== 1 ? 'ves' : 'f'} Below 20% Capacity
             </span>
             <button 
               className="alert-close"
