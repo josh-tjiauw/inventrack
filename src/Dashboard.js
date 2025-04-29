@@ -87,10 +87,10 @@ const Dashboard = () => {
       <header className="dashboard-header">
         <h1>Inventory Dashboard</h1>
         <div className="header-actions">
-          <button onClick={seedDatabase} className="seed-button">
+          <button onClick={seedDatabase} className="primary-button">
             Initialize Sample Data
           </button>
-          <button onClick={() => setReload(prev => !prev)} className="refresh-button">
+          <button onClick={() => setReload(prev => !prev)} className="secondary-button">
             Refresh Data
           </button>
         </div>
@@ -150,48 +150,72 @@ const Dashboard = () => {
 
       {/* Shelf Detail Modal */}
       {selectedShelf && (
-        <div className="modal-overlay" onClick={() => setSelectedShelf(null)}>
-          <div className="modal-content" onClick={e => e.stopPropagation()}>
-            <div className="modal-header">
-              <h2>{selectedShelf.name}</h2>
-              <button 
-                className="modal-close"
-                onClick={() => setSelectedShelf(null)}
-              >
-                &times;
-              </button>
+  <div className="modal-overlay">
+    <div className="modal-container">
+      <div className="modal-content">
+        <div className="modal-header">
+          <h2>{selectedShelf.name}</h2>
+          <button 
+            className="modal-close"
+            onClick={() => setSelectedShelf(null)}
+            aria-label="Close modal"
+          >
+            &times;
+          </button>
+        </div>
+        
+        <div className="modal-body">
+          <div className="shelf-stats-grid">
+            <div className="stat-item">
+              <span className="stat-label">Status:</span>
+              <span className="stat-value" style={{ color: getShelfStatus(selectedShelf).color }}>
+                {getShelfStatus(selectedShelf).status}
+              </span>
             </div>
-            
-            <div className="modal-body">
-              <div className="shelf-stats">
-                <div className="stat-item">
-                  <span>Status:</span>
-                  <span style={{ color: getShelfStatus(selectedShelf).color }}>
-                    {getShelfStatus(selectedShelf).status}
-                  </span>
-                </div>
-                <div className="stat-item">
-                  <span>Capacity:</span>
-                  <span>{selectedShelf.current}/{selectedShelf.capacity} units</span>
-                </div>
-              </div>
-              
-              <div className="shelf-items">
-                <h3>Items ({selectedShelf.items.length})</h3>
-                {selectedShelf.items.length > 0 ? (
-                  <ul>
-                    {selectedShelf.items.map((item, index) => (
-                      <li key={index}>{item}</li>
-                    ))}
-                  </ul>
-                ) : (
-                  <p className="no-items">No items in this shelf</p>
-                )}
-              </div>
+            <div className="stat-item">
+              <span className="stat-label">Capacity:</span>
+              <span className="stat-value">{selectedShelf.current}/{selectedShelf.capacity} units</span>
+            </div>
+            <div className="stat-item">
+              <span className="stat-label">Category:</span>
+              <span className="stat-value">{selectedShelf.category || 'General'}</span>
             </div>
           </div>
+          
+          <div className="capacity-visualization">
+            <div className="capacity-bar">
+              <div 
+                className="fill-level" 
+                style={{ 
+                  width: `${getShelfStatus(selectedShelf).percentage}%`,
+                  backgroundColor: getShelfStatus(selectedShelf).color
+                }}
+              />
+            </div>
+            <span className="capacity-percentage">
+              {getShelfStatus(selectedShelf).percentage}% full
+            </span>
+          </div>
+          
+          <div className="shelf-items-section">
+            <h3>Items ({selectedShelf.items.length})</h3>
+            {selectedShelf.items.length > 0 ? (
+              <ul className="items-list">
+                {selectedShelf.items.map((item, index) => (
+                  <li key={index} className="item">
+                    {item}
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="no-items">No items in this shelf</p>
+            )}
+          </div>
         </div>
-      )}
+      </div>
+    </div>
+  </div>
+)}
     </div>
   );
 };

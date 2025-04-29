@@ -1,101 +1,99 @@
 import express from 'express';
-import OpenAI from 'openai';
-import Shelf from '../models/Shelf.js';
-
+import axios from 'axios';
 const router = express.Router();
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY
-});
 
-router.post('/recommend-storage', async (req, res) => {
+// Middleware for input validation
+const validateRecommendationRequest = (req, res, next) => {
   const { itemCategory, itemDescription } = req.body;
+  
+  if (!itemCategory || !itemDescription) {
+    return res.status(400).json({ 
+      error: 'Both itemCategory and itemDescription are required' 
+    });
+  }
+  
+  next();
+};
+
+router.post('/recommend-storage', validateRecommendationRequest, async (req, res) => {
+  const { itemCategory, itemDescription } = req.body;
+  const model = process.env.AI_MODEL || "gpt-4-turbo";
 
   try {
-    // 1. Fetch current shelf data directly from database
-    const shelves = await Shelf.find({
-      current: { $lt: '$capacity' } // Only shelves with available space
-    }).lean();
-
-    // 2. Construct AI prompt with real-time data
-    const prompt = `
-    INVENTORY STORAGE RECOMMENDATION REQUEST
-
-    ITEM TO STORE:
-    - Category: ${itemCategory}
-    - Description: ${itemDescription}
-
-    AVAILABLE SHELVES:
-    ${shelves.map(s => 
-      `- ${s.name} (${s.category}): ${s.current}/${s.capacity} units | Items: ${s.items.join(', ') || 'None'}`
-    ).join('\n')}
-
-    Please recommend the top 3 shelves considering:
-    1. Category matching (40% weight)
-    2. Available capacity (30% weight)
-    3. Similar existing items (20% weight)
-    4. Future accessibility needs (10% weight)
-
-    Return JSON format:
-    {
-      recommendations: [{
-        shelfId: string,
-        reason: string,
-        shelfName: string,
-        shelfCurrent,
-        shelfCapacity,
-        confidence: number (0-1)
-      }]
-    }`;
-
-    // 3. Get AI recommendations
-    const completion = await openai.chat.completions.create({
-      model: "gpt-4-turbo",
-      response_format: { type: "json_object" },
-      messages: [
-        {
-          role: "system",
-          content: "You are a warehouse management AI. Provide storage recommendations in the exact specified JSON format."
+    const response = await axios.post(
+      'https://api.openai.com/v1/chat/completions',
+      {
+        model,
+        messages: [
+          {
+            role: "system",
+            content: `You are an intelligent inventory management system. 
+            Recommend the best storage shelf based on item type and available capacity.`
+          },
+          {
+            role: "user",
+            content: `Item Category: ${itemCategory}
+            Item Description: ${itemDescription}
+            
+            Recommend the top 3 shelves considering:
+            1. Category match
+            2. Available capacity
+            3. Similar items already stored
+            
+            Return JSON format: {
+              recommendations: [{
+                shelfId: string,
+                shelfName: string,
+                reason: string,
+                confidence: number (0-1)
+              }]
+            }`
+          }
+        ],
+        response_format: { type: "json_object" }
+      },
+      {
+        headers: {
+          'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`,
+          'Content-Type': 'application/json'
         },
-        {
-          role: "user",
-          content: prompt
-        }
-      ],
-      temperature: 0.3
-    });
-
-    // 4. Validate and enhance recommendations
-    const content = completion.choices[0]?.message?.content;
-    if (!content) throw new Error('Empty AI response');
-
-    const result = JSON.parse(content);
-    
-    // Verify recommended shelves exist
-    const validRecommendations = await Promise.all(
-      result.recommendations.map(async rec => {
-        const shelf = await Shelf.findById(rec.shelfId);
-        return shelf ? {
-          ...rec,
-          shelfName: shelf.name,
-          current: shelf.current,
-          capacity: shelf.capacity
-        } : null;
-      })
+        timeout: 15000 // Added timeout
+      }
     );
 
-    res.json({
-      recommendations: validRecommendations.filter(Boolean)
-    });
+    if (!response.data?.choices?.[0]?.message?.content) {
+      throw new Error('Invalid response structure from AI service');
+    }
 
+    const content = response.data.choices[0].message.content;
+    let recommendations;
+    
+    try {
+      recommendations = JSON.parse(content);
+    } catch (parseError) {
+      console.error('Failed to parse AI response:', content);
+      throw new Error('AI returned invalid JSON format');
+    }
+
+    if (!recommendations.recommendations) {
+      throw new Error('AI response missing recommendations');
+    }
+
+    res.json(recommendations);
   } catch (error) {
-    console.error('AI Recommendation Error:', {
+    console.error('AI API error:', {
       message: error.message,
       stack: error.stack,
-      requestBody: req.body
+      response: error.response?.data
     });
 
-    res.status(500).json({ 
-      error: 'AI recommendation failed',
+    const statusCode = error.response?.status || 500;
+    const errorMessage = statusCode === 429 
+      ? 'AI service is currently overloaded. Please try again later.'
+      : 'Failed to get AI recommendations';
+
+    res.status(statusCode).json({ 
+      error: errorMessage,
       details: process.env.NODE_ENV === 'development' ? error.message : undefined
     });
   }

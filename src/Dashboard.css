@@ -1,70 +1,205 @@
+.primary-button, .secondary-button {
+  padding: 0.8rem 1.5rem;
+  border-radius: 6px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.primary-button {
+  background-color: #3b82f6;
+  color: white;
+  border: none;
+}
+
+.primary-button:hover {
+  background-color: #2563eb;
+  transform: translateY(-2px);
+}
+
+.secondary-button {
+  background-color: transparent;
+  color: #3b82f6;
+  border: 2px solid #3b82f6;
+}
+
+.secondary-button:hover {
+  background-color: rgba(59, 130, 246, 0.1);
+  transform: translateY(-2px);
+}
 /* Flexbox Grid Layout */
 .dashboard-container {
-    padding: 20px;
-    max-width: 1200px;
-    margin: 0 auto;
-  }
-  
-  .shelves-grid {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 20px;
-    justify-content: center;
-  }
-  
+  padding: 20px;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.shelves-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 20px;
+  justify-content: center;
+}
+
+.shelf-card {
+  flex: 0 0 calc(33.333% - 20px); /* 3 columns */
+  min-width: 250px;
+  background: white;
+  border-radius: 10px;
+  padding: 20px;
+  box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+  transition: transform 0.3s ease;
+  cursor: pointer;
+}
+
+.shelf-card:hover {
+  transform: translateY(-5px);
+}
+
+/* Pie Chart Styles */
+.pie-chart-container {
+  position: relative;
+  width: 120px;
+  height: 120px;
+  margin: 20px auto;
+}
+
+.pie-chart {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+}
+
+.pie-chart-center {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 70px;
+  height: 70px;
+  background: white;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: bold;
+  font-size: 1.2rem;
+}
+
+/* Modal */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.7);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+  opacity: 0;
+  animation: fadeIn 0.3s forwards;
+}
+
+@keyframes fadeIn {
+  to { opacity: 1; }
+}
+
+.modal-content {
+  background: white;
+  border-radius: 10px;
+  width: 90%;
+  max-width: 500px;
+  max-height: 90vh;
+  overflow-y: auto;
+  box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+  transform: translateY(20px);
+  animation: slideUp 0.3s forwards;
+  position: relative;
+}
+
+@keyframes slideUp {
+  to { transform: translateY(0); }
+}
+
+.modal-header {
+  padding: 20px;
+  border-bottom: 1px solid #eee;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.modal-header h2 {
+  margin: 0;
+  font-size: 1.5rem;
+}
+
+.modal-close {
+  background: none;
+  border: none;
+  font-size: 1.5rem;
+  cursor: pointer;
+  color: #ff0000;
+  padding: 0 10px;
+}
+
+.modal-close:hover {
+  color: #333;
+}
+
+.modal-body {
+  padding: 20px;
+}
+
+.shelf-stats {
+  margin-bottom: 20px;
+}
+
+.shelf-stats div {
+  margin-bottom: 10px;
+  display: flex;
+  justify-content: space-between;
+}
+
+.shelf-items h3 {
+  margin-top: 0;
+  margin-bottom: 15px;
+}
+
+.shelf-items ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  max-height: 200px;
+  overflow-y: auto;
+  border: 1px solid #eee;
+  border-radius: 5px;
+}
+
+.shelf-items li {
+  padding: 10px 15px;
+  border-bottom: 1px solid #eee;
+}
+
+.shelf-items li:last-child {
+  border-bottom: none;
+}
+
+/* Responsive Design */
+@media (max-width: 900px) {
   .shelf-card {
-    flex: 0 0 calc(33.333% - 20px); /* 3 columns */
-    min-width: 250px;
-    background: white;
-    border-radius: 10px;
-    padding: 20px;
-    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
-    transition: transform 0.3s ease;
+    flex: 0 0 calc(50% - 20px); /* 2 columns on medium screens */
+  }
+}
+
+@media (max-width: 600px) {
+  .shelf-card {
+    flex: 0 0 100%; /* 1 column on small screens */
   }
   
-  .shelf-card:hover {
-    transform: translateY(-5px);
+  .modal-content {
+    width: 95%;
   }
-  
-  /* Pie Chart Styles */
-  .pie-chart-container {
-    position: relative;
-    width: 120px;
-    height: 120px;
-    margin: 20px auto;
-  }
-  
-  .pie-chart {
-    width: 100%;
-    height: 100%;
-    border-radius: 50%;
-  }
-  
-  .pie-chart-center {
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    width: 70px;
-    height: 70px;
-    background: white;
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-weight: bold;
-    font-size: 1.2rem;
-  }
-  
-  /* Responsive Design */
-  @media (max-width: 900px) {
-    .shelf-card {
-      flex: 0 0 calc(50% - 20px); /* 2 columns on medium screens */
-    }
-  }
-  
-  @media (max-width: 600px) {
-    .shelf-card {
-      flex: 0 0 100%; /* 1 column on small screens */
-    }
-  }
+}
