@@ -65,8 +65,8 @@ const Dashboard = () => {
     
     let status, color;
     if (percentage === 0) {
-      status = 'Empty';
-      color = '#4CAF50'; // Green
+      status = 'Empty (Low Stock)';
+      color = '#0096FF'; // blue
     } else if (percentage == 100) {
       status = 'Full';
       color = '#F44336'; // Red

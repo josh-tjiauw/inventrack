@@ -15,38 +15,51 @@ const validateRecommendationRequest = (req, res, next) => {
   next();
 };
 
-router.post('/recommend-storage', validateRecommendationRequest, async (req, res) => {
-  const { itemCategory, itemDescription } = req.body;
-  const model = process.env.AI_MODEL || "gpt-4-turbo";
+router.post('/recommend-storage', async (req, res) => {
+  const { itemCategory, itemDescription, shelves } = req.body;
 
   try {
     const response = await axios.post(
       'https://api.openai.com/v1/chat/completions',
       {
-        model,
+        model: "gpt-4-turbo",
         messages: [
           {
             role: "system",
-            content: `You are an intelligent inventory management system. 
-            Recommend the best storage shelf based on item type and available capacity.`
-          },
-          {
-            role: "user",
-            content: `Item Category: ${itemCategory}
-            Item Description: ${itemDescription}
+            content: `You are an inventory management AI. Analyze these shelves and recommend the best 3 options for storing:
+            Item: ${itemDescription} (Category: ${itemCategory})
             
-            Recommend the top 3 shelves considering:
-            1. Category match
-            2. Available capacity
-            3. Similar items already stored
+            Available shelves: ${JSON.stringify(shelves.map(s => ({
+              shelfId: s._id,
+              name: s.name,
+              category: s.category,
+              current: s.current,
+              capacity: s.capacity,
+              items: s.items.slice(0, 3) // Show first 3 items as examples
+            })))}
             
-            Return JSON format: {
-              recommendations: [{
-                shelfId: string,
-                shelfName: string,
-                reason: string,
-                confidence: number (0-1)
-              }]
+            Return JSON with complete shelf recommendations including:
+            - shelfId (MUST match provided IDs)
+            - shelfName
+            - category
+            - currentCapacity
+            - maxCapacity
+            - aiReason (detailed storage reasoning)
+            - confidence (0-1)
+            
+            Example response:
+            {
+              "recommendations": [
+                {
+                  "shelfId": "abc123",
+                  "shelfName": "Clothing A1",
+                  "category": "Clothing",
+                  "currentCapacity": 5,
+                  "maxCapacity": 10,
+                  "aiReason": "Best match with 50% space remaining",
+                  "confidence": 0.9
+                }
+              ]
             }`
           }
         ],
@@ -56,44 +69,23 @@ router.post('/recommend-storage', validateRecommendationRequest, async (req, res
         headers: {
           'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`,
           'Content-Type': 'application/json'
-        },
-        timeout: 15000 // Added timeout
+        }
       }
     );
 
-    if (!response.data?.choices?.[0]?.message?.content) {
-      throw new Error('Invalid response structure from AI service');
-    }
-
     const content = response.data.choices[0].message.content;
-    let recommendations;
+    const result = JSON.parse(content);
     
-    try {
-      recommendations = JSON.parse(content);
-    } catch (parseError) {
-      console.error('Failed to parse AI response:', content);
-      throw new Error('AI returned invalid JSON format');
+    // Validate response structure
+    if (!result.recommendations || !Array.isArray(result.recommendations)) {
+      throw new Error('Invalid recommendations format');
     }
 
-    if (!recommendations.recommendations) {
-      throw new Error('AI response missing recommendations');
-    }
-
-    res.json(recommendations);
+    res.json(result);
   } catch (error) {
-    console.error('AI API error:', {
-      message: error.message,
-      stack: error.stack,
-      response: error.response?.data
-    });
-
-    const statusCode = error.response?.status || 500;
-    const errorMessage = statusCode === 429 
-      ? 'AI service is currently overloaded. Please try again later.'
-      : 'Failed to get AI recommendations';
-
-    res.status(statusCode).json({ 
-      error: errorMessage,
+    console.error('AI API error:', error);
+    res.status(500).json({ 
+      error: 'Failed to get AI recommendations',
       details: process.env.NODE_ENV === 'development' ? error.message : undefined
     });
   }
