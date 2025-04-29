@@ -8,6 +8,8 @@ const Dashboard = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [reload, setReload] = useState(false);
+  const [lowStockShelves, setLowStockShelves] = useState([]);
+  const [showAlert, setShowAlert] = useState(false);
 
   // API configuration
   const api = axios.create({
@@ -25,6 +27,17 @@ const Dashboard = () => {
         const response = await api.get('/shelves');
         setShelves(response.data);
         setError(null);
+        
+        // Check for low stock shelves
+        const lowStock = response.data.filter(shelf => {
+          const percentage = (shelf.current / shelf.capacity) * 100;
+          return percentage < 20 && percentage > 0; // Below 20% but not empty
+        });
+        
+        setLowStockShelves(lowStock);
+        if (lowStock.length > 0) {
+          setShowAlert(true);
+        }
       } catch (err) {
         console.error('API Error:', err);
         setError(err.response?.data?.message || err.message);
@@ -57,6 +70,9 @@ const Dashboard = () => {
     } else if (percentage >= 90) {
       status = 'Full';
       color = '#F44336'; // Red
+    } else if (percentage < 20) {
+      status = 'Low Stock';
+      color = '#FF5722'; // Orange for low stock
     } else {
       status = `${percentage}% Full`;
       color = '#FFC107'; // Yellow
@@ -84,6 +100,25 @@ const Dashboard = () => {
 
   return (
     <div className="dashboard-container">
+      {/* Low Stock Alert Banner */}
+      {showAlert && lowStockShelves.length > 0 && (
+        <div className="alert-banner">
+          <div className="alert-content">
+            <span className="alert-icon">⚠️</span>
+            <span>
+              Low stock alert: {lowStockShelves.length} shelf{lowStockShelves.length !== 1 ? 's' : ''} below 20% capacity
+            </span>
+            <button 
+              className="alert-close"
+              onClick={() => setShowAlert(false)}
+              aria-label="Close alert"
+            >
+              &times;
+            </button>
+          </div>
+        </div>
+      )}
+
       <header className="dashboard-header">
         <h1>Inventory Dashboard</h1>
         <div className="header-actions">
@@ -123,7 +158,7 @@ const Dashboard = () => {
             return (
               <div 
                 key={shelf._id} 
-                className="shelf-card"
+                className={`shelf-card ${percentage < 20 && percentage > 0 ? 'low-stock' : ''}`}
                 onClick={() => setSelectedShelf(shelf)}
               >
                 <div className="shelf-header">
@@ -142,6 +177,9 @@ const Dashboard = () => {
                   <span>{shelf.current}/{shelf.capacity} units</span>
                   <span>{shelf.items.length} items</span>
                 </div>
+                {percentage < 20 && percentage > 0 && (
+                  <div className="low-stock-badge">Low Stock</div>
+                )}
               </div>
             );
           })}
@@ -150,72 +188,72 @@ const Dashboard = () => {
 
       {/* Shelf Detail Modal */}
       {selectedShelf && (
-  <div className="modal-overlay">
-    <div className="modal-container">
-      <div className="modal-content">
-        <div className="modal-header">
-          <h2>{selectedShelf.name}</h2>
-          <button 
-            className="modal-close"
-            onClick={() => setSelectedShelf(null)}
-            aria-label="Close modal"
-          >
-            &times;
-          </button>
+        <div className="modal-overlay">
+          <div className="modal-container">
+            <div className="modal-content">
+              <div className="modal-header">
+                <h2>{selectedShelf.name}</h2>
+                <button 
+                  className="modal-close"
+                  onClick={() => setSelectedShelf(null)}
+                  aria-label="Close modal"
+                >
+                  &times;
+                </button>
+              </div>
+              
+              <div className="modal-body">
+                <div className="shelf-stats-grid">
+                  <div className="stat-item">
+                    <span className="stat-label">Status:</span>
+                    <span className="stat-value" style={{ color: getShelfStatus(selectedShelf).color }}>
+                      {getShelfStatus(selectedShelf).status}
+                    </span>
+                  </div>
+                  <div className="stat-item">
+                    <span className="stat-label">Capacity:</span>
+                    <span className="stat-value">{selectedShelf.current}/{selectedShelf.capacity} units</span>
+                  </div>
+                  <div className="stat-item">
+                    <span className="stat-label">Category:</span>
+                    <span className="stat-value">{selectedShelf.category || 'General'}</span>
+                  </div>
+                </div>
+                
+                <div className="capacity-visualization">
+                  <div className="capacity-bar">
+                    <div 
+                      className="fill-level" 
+                      style={{ 
+                        width: `${getShelfStatus(selectedShelf).percentage}%`,
+                        backgroundColor: getShelfStatus(selectedShelf).color
+                      }}
+                    />
+                  </div>
+                  <span className="capacity-percentage">
+                    {getShelfStatus(selectedShelf).percentage}% full
+                  </span>
+                </div>
+                
+                <div className="shelf-items-section">
+                  <h3>Items ({selectedShelf.items.length})</h3>
+                  {selectedShelf.items.length > 0 ? (
+                    <ul className="items-list">
+                      {selectedShelf.items.map((item, index) => (
+                        <li key={index} className="item">
+                          {item}
+                        </li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <p className="no-items">No items in this shelf</p>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
-        
-        <div className="modal-body">
-          <div className="shelf-stats-grid">
-            <div className="stat-item">
-              <span className="stat-label">Status:</span>
-              <span className="stat-value" style={{ color: getShelfStatus(selectedShelf).color }}>
-                {getShelfStatus(selectedShelf).status}
-              </span>
-            </div>
-            <div className="stat-item">
-              <span className="stat-label">Capacity:</span>
-              <span className="stat-value">{selectedShelf.current}/{selectedShelf.capacity} units</span>
-            </div>
-            <div className="stat-item">
-              <span className="stat-label">Category:</span>
-              <span className="stat-value">{selectedShelf.category || 'General'}</span>
-            </div>
-          </div>
-          
-          <div className="capacity-visualization">
-            <div className="capacity-bar">
-              <div 
-                className="fill-level" 
-                style={{ 
-                  width: `${getShelfStatus(selectedShelf).percentage}%`,
-                  backgroundColor: getShelfStatus(selectedShelf).color
-                }}
-              />
-            </div>
-            <span className="capacity-percentage">
-              {getShelfStatus(selectedShelf).percentage}% full
-            </span>
-          </div>
-          
-          <div className="shelf-items-section">
-            <h3>Items ({selectedShelf.items.length})</h3>
-            {selectedShelf.items.length > 0 ? (
-              <ul className="items-list">
-                {selectedShelf.items.map((item, index) => (
-                  <li key={index} className="item">
-                    {item}
-                  </li>
-                ))}
-              </ul>
-            ) : (
-              <p className="no-items">No items in this shelf</p>
-            )}
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
-)}
+      )}
     </div>
   );
 };
