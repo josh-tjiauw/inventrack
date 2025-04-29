@@ -92,8 +92,6 @@ To run the application:
 - **Low Stock Alerts**: Automatic warnings for shelves below 20% capacity
 - **Quick Actions**: One-click access to receive/export shipments
 
-![Dashboard View](./screenshots/dashboard.png)
-
 ### Receive Shipments
 1. **Item Entry**:
    - Select category (Electronics, Clothing, Food, etc.)
@@ -105,8 +103,6 @@ To run the application:
    - Select shelf and confirm storage
    - Automatic capacity updates
 
-![Receive Shipment](./screenshots/receive.png)
-
 ### Export Shipments
 1. **Shelf Selection**: Choose source shelf
 2. **Item Selection**:
@@ -115,8 +111,6 @@ To run the application:
 3. **Destination Tracking**:
    - Record where items are being shipped
    - Automatic inventory deduction
-
-![Export Shipment](./screenshots/export.png)
 
 ### AI-Powered Features
 - **Smart Storage Recommendations**:
