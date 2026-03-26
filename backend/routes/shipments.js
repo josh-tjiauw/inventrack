@@ -2,16 +2,16 @@ const express = require('express');
 const router = express.Router();
 const Shelf = require('../models/Shelf');
 const Shipment = require('../models/Shipment');
+const { validate } = require('../middleware/validate');
 
 // Record an export shipment
-router.post('/export', async (req, res) => {
+router.post('/export', validate({
+  shelfId: { required: true, type: 'string', nonEmpty: true, message: 'Shelf ID is required' },
+  items: { required: true, type: 'array', nonEmpty: true, message: 'Items array is required and must not be empty' },
+  destination: { required: true, type: 'string', nonEmpty: true, message: 'Destination is required' }
+}), async (req, res) => {
   try {
     const { shelfId, items, destination } = req.body;
-
-    // Validate input
-    if (!shelfId || !items || !items.length || !destination) {
-      return res.status(400).json({ message: 'Missing required fields' });
-    }
 
     // Find the shelf
     const shelf = await Shelf.findById(shelfId);
