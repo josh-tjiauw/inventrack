@@ -56,7 +56,7 @@ InvenTrack is a full-stack inventory management application designed to help bus
 ### Setup Instructions
 
 1. **Clone the repository**
-   git clone https://github.com/yourusername/inventrack.git
+   git clone https://github.com/josh-tjiauw/inventrack.git
    cd inventrack
 
 2. **Install frontend dependencies**
@@ -130,3 +130,11 @@ To run the application:
 | `/api/shelves/:id/add-item` | PUT | Add item to shelf | Shelf ID, Item Data |
 | `/api/shipments/export` | POST | Record export | Shipment Data |
 | `/api/ai/recommend-storage` | POST | Get storage recommendations | Item Data |
+
+## Screenshots
+
+<!-- Screenshots coming soon -->
+
+## Demo
+
+This application can be run locally by following the [Installation](#installation) instructions above. Start both the backend and frontend servers to explore the full inventory management experience.
