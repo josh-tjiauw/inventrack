@@ -1,8 +1,8 @@
 require('dotenv').config();
-const express = require('./node_modules/express');
-const mongoose = require('./node_modules/mongoose');
+const express = require('express');
+const mongoose = require('mongoose');
 const shipmentRoutes = require('./routes/shipments');
-const cors = require('./node_modules/cors');
+const cors = require('cors');
 const app = express();
 
 import('./routes/ai.js').then((module) => {
