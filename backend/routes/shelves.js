@@ -1,5 +1,6 @@
 const express = require('express');
 const Shelf = require('../models/Shelf');
+const { validate } = require('../middleware/validate');
 const router = express.Router();
 
 const asyncHandler = (fn) => (req, res, next) => {
@@ -73,15 +74,10 @@ router.get('/:id', asyncHandler(async (req, res) => {
 }));
 
 // Add item to shelf 
-router.put('/:id/add-item', asyncHandler(async (req, res) => {
+router.put('/:id/add-item', validate({
+  item: { required: true, type: 'string', nonEmpty: true, message: 'Item description is required' }
+}), asyncHandler(async (req, res) => {
   const { item } = req.body;
-  
-  if (!item) {
-    return res.status(400).json({ 
-      success: false,
-      message: 'Item description is required' 
-    });
-  }
 
   const shelf = await Shelf.findById(req.params.id);
   if (!shelf) {
