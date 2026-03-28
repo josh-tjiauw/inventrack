@@ -26,7 +26,12 @@ import('./routes/ai.js').then((module) => {
 });
 
 // Middleware
-app.use(cors());
+const corsOptions = {
+  origin: process.env.CORS_ORIGIN || 'http://localhost:3000',
+  methods: ['GET', 'POST', 'PUT', 'DELETE'],
+  allowedHeaders: ['Content-Type', 'Authorization']
+};
+app.use(cors(corsOptions));
 app.use(express.json());
 app.use('/api/shelves', require('./routes/shelves'));
 app.use('/api/shipments', shipmentRoutes);
