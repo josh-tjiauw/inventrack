@@ -6,8 +6,39 @@ const asyncHandler = (fn) => (req, res, next) => {
   Promise.resolve(fn(req, res, next)).catch(next);
 };
 
-// GET all shelves
+// GET all shelves (supports optional pagination via ?page=1&limit=10)
 router.get('/', asyncHandler(async (req, res) => {
+  const { page, limit } = req.query;
+
+  // If pagination params provided, return paginated response
+  if (page || limit) {
+    const pageNum = Math.max(1, parseInt(page) || 1);
+    const limitNum = Math.max(1, Math.min(100, parseInt(limit) || 10));
+    const skip = (pageNum - 1) * limitNum;
+
+    const [shelves, total] = await Promise.all([
+      Shelf.find().sort({ name: 1 }).skip(skip).limit(limitNum).lean(),
+      Shelf.countDocuments()
+    ]);
+
+    const formattedShelves = shelves.map(shelf => ({
+      _id: shelf._id,
+      name: shelf.name,
+      category: shelf.category || 'General',
+      capacity: shelf.capacity,
+      current: shelf.current,
+      items: shelf.items,
+    }));
+
+    return res.json({
+      data: formattedShelves,
+      total,
+      page: pageNum,
+      totalPages: Math.ceil(total / limitNum)
+    });
+  }
+
+  // No pagination params — return all (backward compatible)
   const shelves = await Shelf.find().sort({ name: 1 }).lean();
   
   const formattedShelves = shelves.map(shelf => ({
