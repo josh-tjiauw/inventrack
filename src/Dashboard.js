@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useMemo } from 'react';
-import axios from 'axios';
+import React, { useState, useEffect } from 'react';
+import api from './api';
 import './Dashboard.css';
 
 const Dashboard = () => {
@@ -10,14 +10,6 @@ const Dashboard = () => {
   const [reload, setReload] = useState(false);
   const [lowStockShelves, setLowStockShelves] = useState([]);
   const [showAlert, setShowAlert] = useState(false);
-
-  // API configuration
-  const api = useMemo(() => axios.create({
-    baseURL: process.env.NODE_ENV === 'development' 
-      ? 'http://localhost:5000/api' 
-      : '/api',
-    timeout: 10000
-  }), []);
 
   // Fetch shelves from backend
   useEffect(() => {
@@ -47,7 +39,7 @@ const Dashboard = () => {
     };
 
     fetchShelves();
-  }, [api, reload]);
+  }, [reload]);
 
   // Seed initial data
   const seedDatabase = async () => {
