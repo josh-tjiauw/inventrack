@@ -25,7 +25,6 @@ const ShipmentReceiver = () => {
         const response = await axios.get('/api/shelves', {
           timeout: 5000
         });
-        console.log('Fetched shelves:', response.data); // Debugging line
         setShelves(response.data);
       } catch (err) {
         setError('Failed to load shelf data. Please refresh or check backend connection.');
@@ -53,18 +52,7 @@ const ShipmentReceiver = () => {
         const matchingShelf = shelves.find(s => s._id === rec.shelfId);
         if (!matchingShelf) return null;
         
-        return {
-          ...matchingShelf, // Spread all shelf properties
-          ...rec,          // Spread all AI recommendation properties
-          // Ensure all required fields exist
-          shelfId: rec.shelfId || matchingShelf._id,
-          shelfName: rec.shelfName || matchingShelf.name,
-          category: rec.category || matchingShelf.category || 'General',
-          currentCapacity: rec.currentCapacity ?? matchingShelf.current,
-          maxCapacity: rec.maxCapacity ?? matchingShelf.capacity,
-          aiReason: rec.aiReason || rec.reason || 'Recommended based on available space',
-          confidence: rec.confidence ?? 0.8
-        };
+        return normalizeRecommendation(matchingShelf, rec);
       }).filter(Boolean); // Remove any null values
   
       setRecommendations(enhancedRecs);
@@ -77,6 +65,18 @@ const ShipmentReceiver = () => {
     }
   };
   
+  const normalizeRecommendation = (shelf, recommendation = {}) => ({
+    ...shelf,
+    ...recommendation,
+    shelfId: recommendation.shelfId || shelf._id,
+    shelfName: recommendation.shelfName || shelf.name,
+    category: recommendation.category || shelf.category || 'General',
+    currentCapacity: recommendation.currentCapacity ?? shelf.current,
+    maxCapacity: recommendation.maxCapacity ?? shelf.capacity,
+    aiReason: recommendation.aiReason || recommendation.reason || 'Recommended based on available space',
+    confidence: recommendation.confidence ?? 0.8
+  });
+
   const getFallbackRecommendations = () => {
     const suitableShelves = shelves
       .filter(shelf => {
@@ -85,7 +85,11 @@ const ShipmentReceiver = () => {
         return isCategoryMatch && hasSpace;
       })
       .sort((a, b) => (b.capacity - b.current) - (a.capacity - a.current))
-      .slice(0, 3);
+      .slice(0, 3)
+      .map(shelf => normalizeRecommendation(shelf, {
+        aiReason: 'Fallback recommendation based on matching category and available space',
+        confidence: 0.6
+      }));
 
     setRecommendations(suitableShelves);
   };
@@ -177,18 +181,21 @@ const ShipmentReceiver = () => {
     <h2>Recommended Storage Locations</h2>
     <div className="recommendations-grid">
       {recommendations.map((rec) => {
-        console.log(recommendations)
-        const percentage = Math.round((rec.currentCapacity / rec.maxCapacity) * 100);
-        const spaceLeft = rec.maxCapacity - rec.currentCapacity;
+        const currentCapacity = rec.currentCapacity ?? rec.current ?? 0;
+        const maxCapacity = rec.maxCapacity ?? rec.capacity ?? 1;
+        const percentage = Math.round((currentCapacity / maxCapacity) * 100);
+        const spaceLeft = maxCapacity - currentCapacity;
+        const shelfId = rec.shelfId || rec._id;
+        const shelfName = rec.shelfName || rec.name;
 
         return (
-          <div key={rec.shelfId} className="shelf-recommendation">
+          <div key={shelfId} className="shelf-recommendation">
             <div className="shelf-info">
-              <h3>{rec.shelfName}</h3>
+              <h3>{shelfName}</h3>
               <div className="shelf-meta">
                 <span>Category: {rec.category}</span>
                 <span>Space left: {spaceLeft} units</span>
-                <span>Current: {rec.currentCapacity}/{rec.maxCapacity}</span>
+                <span>Current: {currentCapacity}/{maxCapacity}</span>
               </div>
               
               <div className="ai-recommendation-details">
@@ -220,7 +227,7 @@ const ShipmentReceiver = () => {
             </div>
             
             <button 
-              onClick={() => storeItem(rec.shelfId)}
+              onClick={() => storeItem(shelfId)}
               className="store-button"
               disabled={loading}
             >
