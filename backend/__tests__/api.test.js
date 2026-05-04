@@ -66,4 +66,20 @@ describe('API Endpoints', () => {
       expect([400, 500]).toContain(res.statusCode);
     });
   });
+
+  describe('POST /api/shipments/export', () => {
+    it('should return 400 for invalid shelf ID format', async () => {
+      const res = await request(app)
+        .post('/api/shipments/export')
+        .send({
+          shelfId: 'invalid-id',
+          items: ['Laptop'],
+          destination: 'Customer A'
+        });
+
+      expect(res.statusCode).toBe(400);
+      expect(res.body).toHaveProperty('success', false);
+      expect(res.body).toHaveProperty('message', 'Invalid shelfId format');
+    });
+  });
 });
