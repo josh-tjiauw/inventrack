@@ -118,13 +118,6 @@ const ShipmentReceiver = () => {
     setItemDescription('');
     setRecommendations([]);
   };
-  const getFillPercentage = (current, capacity) => {
-    return Math.round((current / capacity) * 100);
-  };
-  const getSpaceLeft = (current, capacity) => {
-    console.log('Calculating space left:', { current, capacity }); // Debugging line
-    return capacity - current;
-  };
 
   return (
     <div className="shipment-receiver">

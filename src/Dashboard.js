@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import axios from 'axios';
 import './Dashboard.css';
 
@@ -12,12 +12,12 @@ const Dashboard = () => {
   const [showAlert, setShowAlert] = useState(false);
 
   // API configuration
-  const api = axios.create({
+  const api = useMemo(() => axios.create({
     baseURL: process.env.NODE_ENV === 'development' 
       ? 'http://localhost:5000/api' 
       : '/api',
     timeout: 10000
-  });
+  }), []);
 
   // Fetch shelves from backend
   useEffect(() => {
@@ -47,7 +47,7 @@ const Dashboard = () => {
     };
 
     fetchShelves();
-  }, [reload]);
+  }, [api, reload]);
 
   // Seed initial data
   const seedDatabase = async () => {
@@ -67,7 +67,7 @@ const Dashboard = () => {
     if (percentage === 0) {
       status = 'Empty (Low Stock)';
       color = '#0096FF'; // blue
-    } else if (percentage == 100) {
+    } else if (percentage === 100) {
       status = 'Full';
       color = '#F44336'; // Red
     } else if (percentage <= 20) {
