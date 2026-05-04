@@ -7,6 +7,7 @@ This folder contains a sample relational database for a redesigned enterprise ve
 - `inventrack_enterprise_schema_seed.sql`
 - `transaction-practice.sql`
 - `reporting-views.sql`
+- `validation-checks.sql`
 
 The schema/seed file includes:
 
@@ -19,6 +20,7 @@ The schema/seed file includes:
 - Sample seed data
 - Practice queries
 - Reusable reporting views for dashboards and API read models
+- Validation checks for tenant isolation, quantity rules, location capacity, and stock movement direction
 
 ## Tables Included
 
@@ -144,6 +146,25 @@ The views turn normalized enterprise tables into dashboard/API-friendly read mod
 - `v_stock_movement_history` — readable append-only movement ledger for audits and operations review.
 
 These views are intentionally read-only practice artifacts. They help connect relational modeling to the screens and API responses an enterprise inventory system would need.
+
+## Validation Checks
+
+After loading the seed data, run the validation checks file:
+
+```bash
+psql -d inventrack_practice -f database/postgresql-practice/validation-checks.sql
+```
+
+The validation script should return zero rows for a healthy seed dataset. It checks enterprise invariants such as:
+
+- Inventory lots do not cross tenant/company boundaries.
+- Shipment lines use SKUs from the same company as the shipment.
+- Stock movements match their SKU and location tenants.
+- Reserved quantity never exceeds on-hand quantity.
+- Storage locations are not over capacity.
+- Receive/export/move ledger entries use the expected source and destination location patterns.
+
+This gives the practice database a QA-style safety net before the relational model is translated into API endpoints or migrations.
 
 ## Good Practice Questions
 
