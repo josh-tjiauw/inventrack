@@ -6,7 +6,7 @@ const ExportShipment = () => {
   const [shelves, setShelves] = useState([]);
   const [selectedShelf, setSelectedShelf] = useState('');
   const [items, setItems] = useState([]);
-  const [selectedItems, setSelectedItems] = useState([]);
+  const [selectedItemIndexes, setSelectedItemIndexes] = useState([]);
   const [destination, setDestination] = useState('');
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
@@ -30,23 +30,29 @@ const ExportShipment = () => {
     if (selectedShelf) {
       const shelf = shelves.find(s => s._id === selectedShelf);
       setItems(shelf?.items || []);
+    } else {
+      setItems([]);
     }
+    setSelectedItemIndexes([]);
   }, [selectedShelf, shelves]);
 
-  const handleItemSelect = (item) => {
-    setSelectedItems(prev => 
-      prev.includes(item) 
-        ? prev.filter(i => i !== item)
-        : [...prev, item]
+  const handleItemSelect = (itemIndex) => {
+    setSelectedItemIndexes(prev =>
+      prev.includes(itemIndex)
+        ? prev.filter(index => index !== itemIndex)
+        : [...prev, itemIndex]
     );
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!selectedShelf || selectedItems.length === 0 || !destination) {
+    if (!selectedShelf || selectedItemIndexes.length === 0 || !destination) {
       setError('Please fill all required fields');
       return;
     }
+
+    const selectedItems = selectedItemIndexes.map(index => items[index]);
+    const selectedIndexSet = new Set(selectedItemIndexes);
 
     setLoading(true);
     setError(null);
@@ -61,10 +67,11 @@ const ExportShipment = () => {
       // Update local state to reflect removed items
       const updatedShelves = shelves.map(shelf => {
         if (shelf._id === selectedShelf) {
+          const remainingItems = shelf.items.filter((_, index) => !selectedIndexSet.has(index));
           return {
             ...shelf,
-            items: shelf.items.filter(item => !selectedItems.includes(item)),
-            current: shelf.current - selectedItems.length
+            items: remainingItems,
+            current: Math.max(0, shelf.current - selectedIndexSet.size)
           };
         }
         return shelf;
@@ -72,7 +79,7 @@ const ExportShipment = () => {
 
       setShelves(updatedShelves);
       setSuccess(true);
-      setSelectedItems([]);
+      setSelectedItemIndexes([]);
       setDestination('');
       setTimeout(() => setSuccess(false), 3000);
     } catch (err) {
@@ -110,19 +117,19 @@ const ExportShipment = () => {
             <div className="items-selection-container">
               {items.length > 0 ? (
                 <div className="items-grid">
-                  {items.map(item => (
-                    <div key={item} className="item-row">
+                  {items.map((item, index) => (
+                    <div key={`${item}-${index}`} className="item-row">
                       <div className="item-checkbox-container">
                         <input
                           type="checkbox"
-                          id={`item-${item}`}
-                          checked={selectedItems.includes(item)}
-                          onChange={() => handleItemSelect(item)}
+                          id={`item-${index}`}
+                          checked={selectedItemIndexes.includes(index)}
+                          onChange={() => handleItemSelect(index)}
                           className="item-checkbox"
                         />
                         <div className="checkbox-divider"></div>
                       </div>
-                      <label htmlFor={`item-${item}`} className="item-label">
+                      <label htmlFor={`item-${index}`} className="item-label">
                         {item}
                       </label>
                     </div>

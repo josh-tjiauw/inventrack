@@ -19,16 +19,35 @@ router.post('/export', validate({
       return res.status(404).json({ message: 'Shelf not found' });
     }
 
-    // Verify all items exist in the shelf
-    const invalidItems = items.filter(item => !shelf.items.includes(item));
+    // Verify the shelf has enough occurrences of each requested item.
+    // This preserves duplicate item names by exporting only the selected count.
+    const shelfItemCounts = shelf.items.reduce((counts, item) => {
+      counts[item] = (counts[item] || 0) + 1;
+      return counts;
+    }, {});
+    const requestedItemCounts = items.reduce((counts, item) => {
+      counts[item] = (counts[item] || 0) + 1;
+      return counts;
+    }, {});
+    const invalidItems = Object.entries(requestedItemCounts)
+      .filter(([item, count]) => (shelfItemCounts[item] || 0) < count)
+      .map(([item]) => item);
+
     if (invalidItems.length > 0) {
-      return res.status(400).json({ 
+      return res.status(400).json({
         message: `Items not found in shelf: ${invalidItems.join(', ')}`
       });
     }
 
-    // Remove items from shelf
-    shelf.items = shelf.items.filter(item => !items.includes(item));
+    // Remove only the requested number of occurrences from the shelf.
+    const remainingRemovalCounts = { ...requestedItemCounts };
+    shelf.items = shelf.items.filter(item => {
+      if (remainingRemovalCounts[item] > 0) {
+        remainingRemovalCounts[item] -= 1;
+        return false;
+      }
+      return true;
+    });
     shelf.current = shelf.items.length;
     await shelf.save();
 
