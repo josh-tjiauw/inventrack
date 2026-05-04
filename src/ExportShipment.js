@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
+import api from './api';
 import './ExportShipment.css';
 
 const ExportShipment = () => {
@@ -16,7 +16,7 @@ const ExportShipment = () => {
   useEffect(() => {
     const fetchShelves = async () => {
       try {
-        const response = await axios.get('/api/shelves');
+        const response = await api.get('/api/shelves');
         setShelves(response.data);
       } catch (err) {
         setError('Failed to load shelf data');
@@ -58,7 +58,7 @@ const ExportShipment = () => {
     setError(null);
 
     try {
-      await axios.post('/api/shipments/export', {
+      await api.post('/api/shipments/export', {
         shelfId: selectedShelf,
         items: selectedItems,
         destination

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
+import api from './api';
 import './ShipmentReceiver.css';
 
 const ShipmentReceiver = () => {
@@ -22,7 +22,7 @@ const ShipmentReceiver = () => {
   useEffect(() => {
     const fetchShelves = async () => {
       try {
-        const response = await axios.get('/api/shelves', {
+        const response = await api.get('/api/shelves', {
           timeout: 5000
         });
         console.log('Fetched shelves:', response.data); // Debugging line
@@ -42,7 +42,7 @@ const ShipmentReceiver = () => {
     setError(null);
     
     try {
-      const response = await axios.post('/api/ai/recommend-storage', {
+      const response = await api.post('/api/ai/recommend-storage', {
         itemCategory: selectedCategory,
         itemDescription: itemDescription,
         shelves: shelves.filter(s => s.current < s.capacity) // Only send shelves with space
@@ -93,7 +93,7 @@ const ShipmentReceiver = () => {
   // Store item in selected shelf
   const storeItem = async (shelfId) => {
     try {
-      await axios.put(`/api/shelves/${shelfId}/add-item`, {
+      await api.put(`/api/shelves/${shelfId}/add-item`, {
         item: itemDescription
       });
       setShelves(prev => prev.map(shelf => 
