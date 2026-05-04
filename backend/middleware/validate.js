@@ -69,4 +69,20 @@ function validate(rules) {
   };
 }
 
-module.exports = { validate };
+function validateObjectId(paramName = 'id') {
+  return (req, res, next) => {
+    const value = req.params[paramName] || req.body[paramName];
+    const objectIdPattern = /^[0-9a-fA-F]{24}$/;
+
+    if (!objectIdPattern.test(value || '')) {
+      return res.status(400).json({
+        success: false,
+        message: `Invalid ${paramName} format`
+      });
+    }
+
+    next();
+  };
+}
+
+module.exports = { validate, validateObjectId };
