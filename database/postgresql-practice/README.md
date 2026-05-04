@@ -6,6 +6,7 @@ This folder contains a sample relational database for a redesigned enterprise ve
 
 - `inventrack_enterprise_schema_seed.sql`
 - `transaction-practice.sql`
+- `reporting-views.sql`
 
 The schema/seed file includes:
 
@@ -17,6 +18,7 @@ The schema/seed file includes:
 - Indexes
 - Sample seed data
 - Practice queries
+- Reusable reporting views for dashboards and API read models
 
 ## Tables Included
 
@@ -126,6 +128,23 @@ The examples cover:
 
 The scenarios intentionally use `ROLLBACK`, so they can be rerun without resetting the database.
 
+## Reporting Views
+
+After loading the seed data, run the reporting views file:
+
+```bash
+psql -d inventrack_practice -f database/postgresql-practice/reporting-views.sql
+```
+
+The views turn normalized enterprise tables into dashboard/API-friendly read models:
+
+- `v_current_inventory_by_location` — current lot balances with company, warehouse, location, and SKU context.
+- `v_low_stock_skus` — SKUs where total available quantity is at or below reorder point.
+- `v_warehouse_capacity_summary` — warehouse-level capacity utilization.
+- `v_stock_movement_history` — readable append-only movement ledger for audits and operations review.
+
+These views are intentionally read-only practice artifacts. They help connect relational modeling to the screens and API responses an enterprise inventory system would need.
+
 ## Good Practice Questions
 
 Try writing SQL for these before looking at the included queries.
@@ -158,6 +177,10 @@ quantity_on_hand - quantity_reserved
 13. Show total received quantity by supplier.
 14. Show total exported quantity by customer.
 15. Build an audit history report for one company.
+16. Query `v_current_inventory_by_location` for all available stock in one warehouse.
+17. Use `v_low_stock_skus` to explain which SKU should be reordered first.
+18. Compare `v_warehouse_capacity_summary` across warehouses and identify the fullest one.
+19. Filter `v_stock_movement_history` to show every export performed by one user.
 
 ## Suggested Learning Path
 
@@ -169,8 +192,9 @@ quantity_on_hand - quantity_reserved
 6. Practice grouping and aggregation.
 7. Practice window functions on `stock_movements`.
 8. Run `transaction-practice.sql` and trace how each CTE protects inventory integrity.
-9. Rewrite one transaction to use different SKUs, quantities, and shipment numbers.
-10. Convert one transaction into backend pseudocode for an API endpoint.
+9. Run `reporting-views.sql` and inspect how each view joins normalized tables into an API-friendly read model.
+10. Rewrite one transaction to use different SKUs, quantities, and shipment numbers.
+11. Convert one transaction into backend pseudocode for an API endpoint.
 
 ## Important Enterprise Concepts Practiced
 
@@ -186,3 +210,4 @@ quantity_on_hand - quantity_reserved
 - Transaction-friendly inventory design
 - Row-level locks for concurrent inventory updates
 - Append-only stock movement ledger writes
+- Reporting views for operational dashboards and API read models
