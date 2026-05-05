@@ -6,6 +6,7 @@ import Dashboard from './Dashboard';
 import WarehouseMap from './WarehouseMap';
 import SkuCatalog from './SkuCatalog';
 import ShipmentBoard from './ShipmentBoard';
+import MovementHistory from './MovementHistory';
 import SystemStatus from './SystemStatus';
 import ShipmentReceiver from './ShipmentReceiver';
 import ExportShipment from './ExportShipment';
@@ -25,6 +26,7 @@ function App() {
             <Route path="/warehouses" element={<WarehouseMap />} />
             <Route path="/skus" element={<SkuCatalog />} />
             <Route path="/shipments" element={<ShipmentBoard />} />
+            <Route path="/movements" element={<MovementHistory />} />
             <Route path="/status" element={<SystemStatus />} />
             <Route path="/receive" element={<ShipmentReceiver />} />
             <Route path="/export" element={<ExportShipment />} /> {/* New route */}

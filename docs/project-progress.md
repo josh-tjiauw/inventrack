@@ -75,6 +75,7 @@ Josh approved direct updates to `main` for Inventrack progress. Clawie should st
 - New `/warehouses` Warehouse Location Map page added. It uses `/api/v2/storage-locations`, supports warehouse/status filters, and shows location capacity, current stock, available stock, SKU count, and maintenance status.
 - New `/skus` SKU Catalog page added. It uses `/api/v2/skus`, supports category and low-stock filters, and shows on-hand/reserved/available/reorder status.
 - New `/shipments` Shipment Board page added. It uses `/api/v2/shipments`, supports type/status filters, and expands shipment line receive/export progress.
+- New `/movements` Stock Movement History page added. It uses `/api/v2/stock-movements`, supports movement type/SKU/limit filters, and shows audit ledger rows with from/to locations, user, and reference metadata.
 - New `/status` System Status page added. It shows the configured API base URL, backend mode, PostgreSQL health, v2 table counts, and smoke-check results for the main v2 read endpoints.
 
 ### Deployment prep
@@ -96,7 +97,7 @@ Josh approved direct updates to `main` for Inventrack progress. Clawie should st
 
 ## Current Status
 
-The backend is deployed on Render and connected to Neon PostgreSQL. The frontend dashboard, Warehouse Location Map, SKU Catalog page, Shipment Board page, and System Status page consume PostgreSQL `/api/v2` read endpoints for warehouses, storage locations, SKUs, inventory, shipments, stock movements, health, and rule-based storage recommendations.
+The backend is deployed on Render and connected to Neon PostgreSQL. The frontend dashboard, Warehouse Location Map, SKU Catalog page, Shipment Board page, Stock Movement History page, and System Status page consume PostgreSQL `/api/v2` read endpoints for warehouses, storage locations, SKUs, inventory, shipments, stock movements, health, and rule-based storage recommendations.
 
 The project has started the real PostgreSQL migration.
 
@@ -128,7 +129,6 @@ The new PostgreSQL implementation starts at:
 4. Update frontend screens to consume `/api/v2` read endpoints.
 5. Add Postgres-backed UI pages:
    - inventory by location
-   - stock movement history
    - receive/export workflows backed by PostgreSQL writes
 6. Add GitHub Actions CI for:
    - frontend build
