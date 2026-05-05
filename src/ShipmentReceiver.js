@@ -12,21 +12,27 @@ const ShipmentReceiver = () => {
   const [quantity, setQuantity] = useState(25);
   const [supplier, setSupplier] = useState('');
   const [loading, setLoading] = useState(true);
+  const [submittingLocationId, setSubmittingLocationId] = useState(null);
+  const [successMessage, setSuccessMessage] = useState('');
   const [error, setError] = useState(null);
 
+  const fetchReceivePlanningData = async () => {
+    const [skuResponse, locationResponse, recommendationResponse] = await Promise.all([
+      api.get('/api/v2/skus'),
+      api.get('/api/v2/storage-locations?status=active'),
+      api.get('/api/v2/storage-recommendations')
+    ]);
+
+    setSkus(skuResponse.data.data || []);
+    setLocations(locationResponse.data.data || []);
+    setRecommendations(recommendationResponse.data.data || []);
+  };
+
   useEffect(() => {
-    const fetchReceivePlanningData = async () => {
+    const loadReceivePlanningData = async () => {
       try {
         setLoading(true);
-        const [skuResponse, locationResponse, recommendationResponse] = await Promise.all([
-          api.get('/api/v2/skus'),
-          api.get('/api/v2/storage-locations?status=active'),
-          api.get('/api/v2/storage-recommendations')
-        ]);
-
-        setSkus(skuResponse.data.data || []);
-        setLocations(locationResponse.data.data || []);
-        setRecommendations(recommendationResponse.data.data || []);
+        await fetchReceivePlanningData();
         setError(null);
       } catch (err) {
         console.error('Receive planning error:', err);
@@ -36,7 +42,7 @@ const ShipmentReceiver = () => {
       }
     };
 
-    fetchReceivePlanningData();
+    loadReceivePlanningData();
   }, []);
 
   const selectedSku = skus.find((sku) => String(sku.sku_id) === String(selectedSkuId));
@@ -69,6 +75,33 @@ const ShipmentReceiver = () => {
     selectedSku && String(recommendation.skuId) === String(selectedSku.sku_id)
   ));
 
+  const handleReceiveStock = async (location) => {
+    if (!selectedSku) return;
+
+    try {
+      setSubmittingLocationId(location.location_id);
+      setSuccessMessage('');
+      setError(null);
+
+      const response = await api.post('/api/v2/receive-stock', {
+        skuId: selectedSku.sku_id,
+        locationId: location.location_id,
+        quantity: requestedQuantity,
+        supplier: supplier || 'Manual receive',
+        lotNumber: `${selectedSku.sku}-${new Date().toISOString().slice(0, 10)}`
+      });
+
+      const received = response.data.data;
+      setSuccessMessage(`Received ${formatNumber(received.movement.quantity)} units of ${selectedSku.sku} into ${received.location.code}.`);
+      await fetchReceivePlanningData();
+    } catch (err) {
+      console.error('Receive stock error:', err);
+      setError(err.response?.data?.message || err.message);
+    } finally {
+      setSubmittingLocationId(null);
+    }
+  };
+
   if (loading) return (
     <div className="loading-container">
       <div className="loading-spinner"></div>
@@ -89,7 +122,7 @@ const ShipmentReceiver = () => {
       <p className="eyebrow">PostgreSQL v2 API</p>
       <h1>Receive Shipment Planner</h1>
       <p className="recommendation-subtitle">
-        Plan inbound receiving with live SKU, location capacity, and rule-based recommendation data. Write endpoints are intentionally not called yet.
+        Plan and commit inbound receiving with live SKU, location capacity, and rule-based recommendation data.
       </p>
 
       <div className="input-section">
@@ -130,6 +163,13 @@ const ShipmentReceiver = () => {
         <div className="success-message">
           <span className="success-icon">✓</span>
           Planning receipt for {formatNumber(requestedQuantity)} units of {selectedSku.sku}{supplier ? ` from ${supplier}` : ''}.
+        </div>
+      )}
+
+      {successMessage && (
+        <div className="success-message">
+          <span className="success-icon">✓</span>
+          {successMessage}
         </div>
       )}
 
@@ -192,8 +232,12 @@ const ShipmentReceiver = () => {
                       <span className="capacity-percentage">Projected after receipt</span>
                     </div>
                   </div>
-                  <button className="store-button" disabled>
-                    Write endpoint pending
+                  <button
+                    className="store-button"
+                    onClick={() => handleReceiveStock(location)}
+                    disabled={submittingLocationId !== null}
+                  >
+                    {submittingLocationId === location.location_id ? 'Receiving...' : 'Receive here'}
                   </button>
                 </div>
               );

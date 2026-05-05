@@ -64,6 +64,8 @@ Josh approved direct updates to `main` for Inventrack progress. Clawie should st
   - `GET /api/v2/stock-movements`
   - `GET /api/v2/shipments`
   - `GET /api/v2/storage-recommendations`
+  - `POST /api/v2/receive-stock`
+  - `POST /api/v2/export-stock`
 - PostgreSQL v2 integration tests added:
   - `backend/__tests__/postgres-v2.test.js`
 
@@ -78,8 +80,8 @@ Josh approved direct updates to `main` for Inventrack progress. Clawie should st
 - New `/shipments` Shipment Board page added. It uses `/api/v2/shipments`, supports type/status filters, and expands shipment line receive/export progress.
 - New `/movements` Stock Movement History page added. It uses `/api/v2/stock-movements`, supports movement type/SKU/limit filters, and shows audit ledger rows with from/to locations, user, and reference metadata.
 - New `/status` System Status page added. It shows the configured API base URL, backend mode, PostgreSQL health, v2 table counts, and smoke-check results for the main v2 read endpoints.
-- `/receive` has been converted from the legacy MongoDB shelf/AI flow into a PostgreSQL v2 Receive Shipment Planner. It reads `/api/v2/skus`, `/api/v2/storage-locations`, and `/api/v2/storage-recommendations`, ranks active locations by available capacity/projected utilization, and clearly marks write actions as pending until transactional receive endpoints exist.
-- `/export` has been converted from the legacy MongoDB shelf flow into a PostgreSQL v2 Export Shipment Planner. It reads `/api/v2/inventory` and `/api/v2/skus`, generates a FEFO-style pick plan from available lots, shows requested/planned/shortage totals, and clearly marks write actions as pending until transactional export endpoints exist.
+- `/receive` has been converted from the legacy MongoDB shelf/AI flow into a PostgreSQL v2 Receive Shipment workflow. It reads `/api/v2/skus`, `/api/v2/storage-locations`, and `/api/v2/storage-recommendations`, ranks active locations by available capacity/projected utilization, and can now commit receipts through transactional `POST /api/v2/receive-stock`.
+- `/export` has been converted from the legacy MongoDB shelf flow into a PostgreSQL v2 Export Shipment workflow. It reads `/api/v2/inventory` and `/api/v2/skus`, generates a FEFO-style pick plan from available lots, shows requested/planned/shortage totals, and can now commit exports through transactional `POST /api/v2/export-stock`.
 
 ### Deployment prep
 
@@ -100,7 +102,7 @@ Josh approved direct updates to `main` for Inventrack progress. Clawie should st
 
 ## Current Status
 
-The backend is deployed on Render and connected to Neon PostgreSQL. The frontend dashboard, Warehouse Location Map, Inventory Explorer, SKU Catalog page, Shipment Board page, Stock Movement History page, Receive Shipment Planner, Export Shipment Planner, and System Status page consume PostgreSQL `/api/v2` read endpoints for warehouses, storage locations, SKUs, inventory, shipments, stock movements, health, and rule-based storage recommendations.
+The backend is deployed on Render and connected to Neon PostgreSQL. The frontend dashboard, Warehouse Location Map, Inventory Explorer, SKU Catalog page, Shipment Board page, Stock Movement History page, Receive Shipment workflow, Export Shipment workflow, and System Status page consume PostgreSQL `/api/v2` endpoints for warehouses, storage locations, SKUs, inventory, shipments, stock movements, health, rule-based storage recommendations, and transaction-safe manual receive/export writes.
 
 The project has started the real PostgreSQL migration.
 
@@ -120,14 +122,13 @@ The new PostgreSQL implementation starts at:
 ## Next Best Work Items
 
 1. Create real PostgreSQL migration files from the practice schema.
-2. Add write endpoints for the relational model:
+2. Add more write endpoints for the relational model:
    - create warehouse
    - create storage location
    - create SKU
-   - receive stock
-   - export stock
-3. Build transaction-safe receive/export service functions.
-4. Add Postgres-backed receive/export workflows once transactional write endpoints exist.
+   - shipment creation and line assignment
+3. Harden transaction-safe receive/export service functions with dedicated service-layer tests.
+4. Add shipment-backed receive/export workflows that update shipment line progress.
 5. Add GitHub Actions CI for:
    - frontend build
    - backend tests
@@ -178,4 +179,6 @@ Once backend is running with `DATABASE_URL`, test:
 /api/v2/shipments
 /api/v2/stock-movements
 /api/v2/storage-recommendations
+POST /api/v2/receive-stock
+POST /api/v2/export-stock
 ```

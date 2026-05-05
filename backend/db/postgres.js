@@ -36,6 +36,22 @@ const getPool = () => {
 
 const query = (text, params) => getPool().query(text, params);
 
+const withTransaction = async (callback) => {
+  const client = await getPool().connect();
+
+  try {
+    await client.query('BEGIN');
+    const result = await callback(client);
+    await client.query('COMMIT');
+    return result;
+  } catch (err) {
+    await client.query('ROLLBACK');
+    throw err;
+  } finally {
+    client.release();
+  }
+};
+
 const pingPostgres = async () => {
   const result = await query('SELECT NOW() AS now');
   return result.rows[0];
@@ -51,6 +67,7 @@ const closePool = async () => {
 module.exports = {
   getPool,
   query,
+  withTransaction,
   pingPostgres,
   closePool
 };

@@ -19,19 +19,25 @@ const ExportShipment = () => {
   const [quantity, setQuantity] = useState(10);
   const [destination, setDestination] = useState('');
   const [loading, setLoading] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
+  const [successMessage, setSuccessMessage] = useState('');
   const [error, setError] = useState(null);
 
+  const fetchExportPlanningData = async () => {
+    const [inventoryResponse, skuResponse] = await Promise.all([
+      api.get('/api/v2/inventory'),
+      api.get('/api/v2/skus')
+    ]);
+
+    setInventory(inventoryResponse.data.data || []);
+    setSkus(skuResponse.data.data || []);
+  };
+
   useEffect(() => {
-    const fetchExportPlanningData = async () => {
+    const loadExportPlanningData = async () => {
       try {
         setLoading(true);
-        const [inventoryResponse, skuResponse] = await Promise.all([
-          api.get('/api/v2/inventory'),
-          api.get('/api/v2/skus')
-        ]);
-
-        setInventory(inventoryResponse.data.data || []);
-        setSkus(skuResponse.data.data || []);
+        await fetchExportPlanningData();
         setError(null);
       } catch (err) {
         console.error('Export planning error:', err);
@@ -41,7 +47,7 @@ const ExportShipment = () => {
       }
     };
 
-    fetchExportPlanningData();
+    loadExportPlanningData();
   }, []);
 
   const selectedSku = skus.find((sku) => String(sku.sku_id) === String(selectedSkuId));
@@ -72,6 +78,31 @@ const ExportShipment = () => {
   const isFullyAllocated = selectedSku && plannedQuantity >= requestedQuantity;
   const shortage = Math.max(0, requestedQuantity - plannedQuantity);
 
+  const handleExportStock = async () => {
+    if (!selectedSku || !isFullyAllocated) return;
+
+    try {
+      setSubmitting(true);
+      setSuccessMessage('');
+      setError(null);
+
+      const response = await api.post('/api/v2/export-stock', {
+        skuId: selectedSku.sku_id,
+        quantity: requestedQuantity,
+        destination: destination || 'Manual export'
+      });
+
+      const exported = response.data.data;
+      setSuccessMessage(`Exported ${formatNumber(exported.exportedQuantity)} units of ${selectedSku.sku} across ${exported.picks.length} lot(s).`);
+      await fetchExportPlanningData();
+    } catch (err) {
+      console.error('Export stock error:', err);
+      setError(err.response?.data?.message || err.message);
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
   if (loading) return (
     <div className="loading-container">
       <div className="loading-spinner"></div>
@@ -94,7 +125,7 @@ const ExportShipment = () => {
           <p className="eyebrow">PostgreSQL v2 API</p>
           <h1>Export Shipment Planner</h1>
           <p className="dashboard-subtitle">
-            Plan outbound picking from live lot-level inventory using FEFO-style expiration priority. Write endpoints are intentionally not called yet.
+            Plan and commit outbound picking from live lot-level inventory using FEFO-style expiration priority.
           </p>
         </div>
       </header>
@@ -166,14 +197,24 @@ const ExportShipment = () => {
         </div>
       )}
 
+      {successMessage && (
+        <div className="success-message">
+          {successMessage}
+        </div>
+      )}
+
       <section className="inventory-section">
         <div className="section-heading-row">
           <div>
             <h2>Generated Pick Plan</h2>
             <p className="dashboard-subtitle">Lots are prioritized by earliest expiration date, then location code.</p>
           </div>
-          <button className="submit-button export-disabled-button" disabled>
-            Write endpoint pending
+          <button
+            className="submit-button"
+            onClick={handleExportStock}
+            disabled={!isFullyAllocated || submitting}
+          >
+            {submitting ? 'Exporting...' : 'Commit export'}
           </button>
         </div>
 
