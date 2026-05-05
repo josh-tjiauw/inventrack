@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import api from './api';
 import './Dashboard.css';
 
@@ -15,25 +15,48 @@ const getProgress = (shipment) => {
   return Math.min(100, Math.round((processed / total) * 100));
 };
 
+const newLine = () => ({ skuId: '', quantity: 1 });
+const defaultShipmentNumber = (type = 'inbound') => `${type === 'inbound' ? 'IN' : 'OUT'}-${Date.now()}`;
+
 const ShipmentBoard = () => {
   const [shipments, setShipments] = useState([]);
+  const [skus, setSkus] = useState([]);
   const [shipmentType, setShipmentType] = useState('all');
   const [status, setStatus] = useState('all');
   const [expandedShipmentId, setExpandedShipmentId] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
+  const [successMessage, setSuccessMessage] = useState('');
+  const [draftShipment, setDraftShipment] = useState({
+    shipmentNumber: defaultShipmentNumber('inbound'),
+    shipmentType: 'inbound',
+    status: 'scheduled',
+    supplierOrCustomer: '',
+    expectedDate: new Date().toISOString().slice(0, 10),
+    lines: [newLine()]
+  });
+
+  const fetchShipments = useCallback(async () => {
+    const params = new URLSearchParams({ limit: '25' });
+    if (shipmentType !== 'all') params.set('shipmentType', shipmentType);
+    if (status !== 'all') params.set('status', status);
+
+    const response = await api.get(`/api/v2/shipments?${params.toString()}`);
+    setShipments(response.data.data || []);
+  }, [shipmentType, status]);
 
   useEffect(() => {
-    const fetchShipments = async () => {
+    const loadBoardData = async () => {
       try {
         setLoading(true);
-        const params = new URLSearchParams({ limit: '25' });
-        if (shipmentType !== 'all') params.set('shipmentType', shipmentType);
-        if (status !== 'all') params.set('status', status);
-
-        const response = await api.get(`/api/v2/shipments?${params.toString()}`);
-        setShipments(response.data.data || []);
+        const [shipmentResponse, skuResponse] = await Promise.all([
+          fetchShipments(),
+          api.get('/api/v2/skus')
+        ]);
+        setSkus(skuResponse.data.data || []);
         setError(null);
+        return shipmentResponse;
       } catch (err) {
         console.error('Shipment board error:', err);
         setError(err.response?.data?.message || err.message);
@@ -42,8 +65,76 @@ const ShipmentBoard = () => {
       }
     };
 
-    fetchShipments();
-  }, [shipmentType, status]);
+    loadBoardData();
+  }, [fetchShipments]);
+
+  const updateDraft = (field, value) => {
+    setDraftShipment((prev) => ({ ...prev, [field]: value }));
+  };
+
+  const updateLine = (index, field, value) => {
+    setDraftShipment((prev) => ({
+      ...prev,
+      lines: prev.lines.map((line, lineIndex) => (
+        lineIndex === index ? { ...line, [field]: value } : line
+      ))
+    }));
+  };
+
+  const addLine = () => {
+    setDraftShipment((prev) => ({ ...prev, lines: [...prev.lines, newLine()] }));
+  };
+
+  const removeLine = (index) => {
+    setDraftShipment((prev) => ({
+      ...prev,
+      lines: prev.lines.length === 1 ? prev.lines : prev.lines.filter((_, lineIndex) => lineIndex !== index)
+    }));
+  };
+
+  const handleCreateShipment = async (event) => {
+    event.preventDefault();
+
+    const lines = draftShipment.lines
+      .filter((line) => line.skuId && Number(line.quantity || 0) > 0)
+      .map((line) => ({ skuId: Number(line.skuId), quantity: Number(line.quantity) }));
+
+    if (!draftShipment.shipmentNumber || lines.length === 0) {
+      setError('Shipment number and at least one valid line are required.');
+      return;
+    }
+
+    try {
+      setSaving(true);
+      setError(null);
+      setSuccessMessage('');
+
+      const response = await api.post('/api/v2/shipments', {
+        companyId: 1,
+        shipmentNumber: draftShipment.shipmentNumber,
+        shipmentType: draftShipment.shipmentType,
+        status: draftShipment.status,
+        supplierOrCustomer: draftShipment.supplierOrCustomer || 'Manual shipment',
+        expectedDate: draftShipment.expectedDate || null,
+        createdByUserId: 2,
+        lines
+      });
+
+      setSuccessMessage(`Created shipment ${response.data.data.shipment_number} with ${response.data.data.lines.length} line(s).`);
+      setDraftShipment((prev) => ({
+        ...prev,
+        shipmentNumber: defaultShipmentNumber(prev.shipmentType),
+        supplierOrCustomer: '',
+        lines: [newLine()]
+      }));
+      await fetchShipments();
+    } catch (err) {
+      console.error('Create shipment error:', err);
+      setError(err.response?.data?.message || err.message);
+    } finally {
+      setSaving(false);
+    }
+  };
 
   const inboundCount = shipments.filter((shipment) => shipment.shipment_type === 'inbound').length;
   const outboundCount = shipments.filter((shipment) => shipment.shipment_type === 'outbound').length;
@@ -56,13 +147,6 @@ const ShipmentBoard = () => {
     </div>
   );
 
-  if (error) return (
-    <div className="error-container">
-      <h2>Error Loading Shipment Board</h2>
-      <p>{error}</p>
-    </div>
-  );
-
   return (
     <div className="dashboard-container">
       <header className="dashboard-header">
@@ -70,10 +154,17 @@ const ShipmentBoard = () => {
           <p className="eyebrow">PostgreSQL v2 API</p>
           <h1>Shipment Board</h1>
           <p className="dashboard-subtitle">
-            Inbound and outbound shipment summaries with line-level receive/export progress.
+            Inbound and outbound shipment summaries with line-level receive/export progress and shipment creation.
           </p>
         </div>
       </header>
+
+      {error && (
+        <div className="error-message">{error}</div>
+      )}
+      {successMessage && (
+        <div className="success-message">{successMessage}</div>
+      )}
 
       <div className="dashboard-summary">
         <div className="summary-card">
@@ -93,6 +184,73 @@ const ShipmentBoard = () => {
           <p>{openCount}</p>
         </div>
       </div>
+
+      <section className="inventory-section">
+        <div className="section-heading-row">
+          <div>
+            <h2>Create Shipment</h2>
+            <p className="dashboard-subtitle">Submits to transactional `POST /api/v2/shipments`.</p>
+          </div>
+        </div>
+
+        <form onSubmit={handleCreateShipment} className="shipment-create-form">
+          <div className="filter-bar shipment-create-grid">
+            <label>
+              Shipment #
+              <input value={draftShipment.shipmentNumber} onChange={(event) => updateDraft('shipmentNumber', event.target.value)} />
+            </label>
+            <label>
+              Type
+              <select value={draftShipment.shipmentType} onChange={(event) => updateDraft('shipmentType', event.target.value)}>
+                <option value="inbound">Inbound</option>
+                <option value="outbound">Outbound</option>
+              </select>
+            </label>
+            <label>
+              Status
+              <select value={draftShipment.status} onChange={(event) => updateDraft('status', event.target.value)}>
+                <option value="draft">Draft</option>
+                <option value="scheduled">Scheduled</option>
+                <option value="in_progress">In progress</option>
+              </select>
+            </label>
+            <label>
+              Supplier / Customer
+              <input value={draftShipment.supplierOrCustomer} onChange={(event) => updateDraft('supplierOrCustomer', event.target.value)} placeholder="Counterparty" />
+            </label>
+            <label>
+              Expected Date
+              <input type="date" value={draftShipment.expectedDate} onChange={(event) => updateDraft('expectedDate', event.target.value)} />
+            </label>
+          </div>
+
+          <div className="shipment-lines-editor">
+            {draftShipment.lines.map((line, index) => (
+              <div key={`draft-line-${index}`} className="shipment-line-editor-row">
+                <label>
+                  SKU
+                  <select value={line.skuId} onChange={(event) => updateLine(index, 'skuId', event.target.value)}>
+                    <option value="">Select SKU</option>
+                    {skus.map((sku) => (
+                      <option key={sku.sku_id} value={sku.sku_id}>{sku.sku} — {sku.name}</option>
+                    ))}
+                  </select>
+                </label>
+                <label>
+                  Quantity
+                  <input type="number" min="1" value={line.quantity} onChange={(event) => updateLine(index, 'quantity', event.target.value)} />
+                </label>
+                <button type="button" className="secondary-button" onClick={() => removeLine(index)} disabled={draftShipment.lines.length === 1}>Remove</button>
+              </div>
+            ))}
+          </div>
+
+          <div className="header-actions">
+            <button type="button" className="secondary-button" onClick={addLine}>Add Line</button>
+            <button type="submit" className="primary-button" disabled={saving}>{saving ? 'Creating...' : 'Create Shipment'}</button>
+          </div>
+        </form>
+      </section>
 
       <section className="inventory-section">
         <div className="section-heading-row">

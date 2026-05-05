@@ -92,7 +92,7 @@ Josh approved direct updates to `main` for Inventrack progress. Clawie should st
 - New `/warehouses` Warehouse Location Map page added. It uses `/api/v2/storage-locations`, supports warehouse/status filters, and shows location capacity, current stock, available stock, SKU count, and maintenance status.
 - New `/inventory` Inventory Explorer page added. It uses `/api/v2/inventory`, supports warehouse/SKU/low-stock filters, and shows lot-level on-hand/reserved/available quantities with expiration and status.
 - New `/skus` SKU Catalog page added. It uses `/api/v2/skus`, supports category and low-stock filters, and shows on-hand/reserved/available/reorder status.
-- New `/shipments` Shipment Board page added. It uses `/api/v2/shipments`, supports type/status filters, and expands shipment line receive/export progress.
+- New `/shipments` Shipment Board page added. It uses `/api/v2/shipments`, supports type/status filters, expands shipment line receive/export progress, and can create shipment headers with line assignments through transactional `POST /api/v2/shipments`.
 - New `/movements` Stock Movement History page added. It uses `/api/v2/stock-movements`, supports movement type/SKU/limit filters, and shows audit ledger rows with from/to locations, user, and reference metadata.
 - New `/status` System Status page added. It shows the configured API base URL, backend mode, PostgreSQL health, v2 table counts, and smoke-check results for the main v2 read endpoints.
 - `/receive` has been converted from the legacy MongoDB shelf/AI flow into a PostgreSQL v2 Receive Shipment workflow. It reads `/api/v2/skus`, `/api/v2/storage-locations`, and `/api/v2/storage-recommendations`, ranks active locations by available capacity/projected utilization, and can now commit receipts through transactional `POST /api/v2/receive-stock`.
@@ -141,7 +141,7 @@ The new PostgreSQL implementation starts at:
 
 ## Next Best Work Items
 
-1. Add shipment-backed receive/export workflows that update shipment line progress.
+1. Add shipment-backed receive/export workflows that update shipment line progress from the newly created shipment records.
 2. Add unit-level service tests around `backend/services/stockTransactions.js` once a lightweight transaction mock/test harness is in place.
 3. Expand the relational model write surface after service extraction.
 4. Keep Vercel/Render/Neon deployment checks documented and reproducible.
