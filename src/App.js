@@ -3,6 +3,7 @@ import { BrowserRouter as Router, Route, Routes } from 'react-router-dom';
 import Home from './Home';
 import About from './About';
 import Dashboard from './Dashboard';
+import SkuCatalog from './SkuCatalog';
 import ShipmentReceiver from './ShipmentReceiver';
 import ExportShipment from './ExportShipment';
 import Navbar from './Navbar';
@@ -18,6 +19,7 @@ function App() {
             <Route path="/" element={<Home />} />
             <Route path="/about" element={<About />} />
             <Route path="/dashboard" element={<Dashboard />} />
+            <Route path="/skus" element={<SkuCatalog />} />
             <Route path="/receive" element={<ShipmentReceiver />} />
             <Route path="/export" element={<ExportShipment />} /> {/* New route */}
           </Routes>

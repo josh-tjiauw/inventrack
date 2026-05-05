@@ -70,6 +70,7 @@ Josh approved direct updates to `main` for Inventrack progress. Clawie should st
 - Dashboard consumes live PostgreSQL v2 read endpoints for warehouse capacity, SKUs, inventory lots, and movement history.
 - Dashboard now shows a rule-based Storage Recommendations panel fed by `/api/v2/storage-recommendations`.
 - Low-stock dashboard alert now uses the v2 SKU `total_available` field instead of the legacy inventory field name.
+- New `/skus` SKU Catalog page added. It uses `/api/v2/skus`, supports category and low-stock filters, and shows on-hand/reserved/available/reorder status.
 
 ### Deployment prep
 
@@ -90,7 +91,7 @@ Josh approved direct updates to `main` for Inventrack progress. Clawie should st
 
 ## Current Status
 
-The backend is deployed on Render and connected to Neon PostgreSQL. The frontend dashboard has been updated to consume the PostgreSQL `/api/v2` read endpoints for warehouses, SKUs, inventory, stock movements, and rule-based storage recommendations.
+The backend is deployed on Render and connected to Neon PostgreSQL. The frontend dashboard and SKU Catalog page consume PostgreSQL `/api/v2` read endpoints for warehouses, SKUs, inventory, stock movements, and rule-based storage recommendations.
 
 The project has started the real PostgreSQL migration.
 
@@ -122,7 +123,6 @@ The new PostgreSQL implementation starts at:
 4. Update frontend screens to consume `/api/v2` read endpoints.
 5. Add Postgres-backed UI pages:
    - warehouse overview
-   - SKU catalog
    - inventory by location
    - stock movement history
    - receive/export workflows

@@ -33,6 +33,13 @@ const Navbar = () => {
           >
             Dashboard
           </NavLink>
+
+          <NavLink 
+            to="/skus" 
+            className={({ isActive }) => isActive ? "nav-link active" : "nav-link"}
+          >
+            SKU Catalog
+          </NavLink>
           
           <NavLink 
             to="/receive" 
