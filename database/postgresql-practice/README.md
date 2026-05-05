@@ -74,6 +74,33 @@ That means you can answer business questions like:
 - Which shipment caused a stock change?
 - How full is each warehouse location?
 
+## Local Validation Script
+
+If PostgreSQL is installed locally and `psql` is available, validate the full practice dataset from the repo root:
+
+```powershell
+$env:PGPASSWORD = 'postgres'
+.\database\postgresql-practice\validate-local-postgres.ps1
+```
+
+The script:
+
+- checks `psql`
+- checks `pg_isready`
+- creates `inventrack_practice` if missing
+- loads `inventrack_enterprise_schema_seed.sql`
+- loads `reporting-views.sql`
+- runs `transaction-practice.sql`
+- runs smoke-check count queries
+
+You can override connection settings with:
+
+- `PGHOST`
+- `PGPORT`
+- `PGUSER`
+- `PGDATABASE`
+- `PGPASSWORD`
+
 ## How To Load It In PostgreSQL
 
 If you have a local database named `inventrack_practice`:
