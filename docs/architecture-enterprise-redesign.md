@@ -271,6 +271,8 @@ GET    /api/reports/low-stock
 GET    /api/audit-log
 ```
 
+See [`enterprise-api-contract.md`](enterprise-api-contract.md) for a transaction-oriented API contract draft that maps these modules to PostgreSQL tables, reporting views, business-rule conflicts, and stock movement ledger writes.
+
 ## 7. Key Business Rules
 
 1. Inventory quantity cannot go below zero unless an admin performs an explicit adjustment.
