@@ -230,4 +230,110 @@ router.get('/stock-movements', asyncHandler(async (req, res) => {
   res.json({ success: true, data: result.rows });
 }));
 
+router.get('/storage-recommendations', asyncHandler(async (req, res) => {
+  const companyId = optionalInt(req.query.companyId);
+  const params = [];
+  const capacityWhere = [];
+  const skuWhere = [];
+  const inventoryWhere = [];
+
+  if (companyId) {
+    params.push(companyId);
+    const companyParam = `$${params.length}`;
+    capacityWhere.push(`company_id = ${companyParam}`);
+    skuWhere.push(`s.company_id = ${companyParam}`);
+    inventoryWhere.push(`company_id = ${companyParam}`);
+  }
+
+  const [capacityResult, lowStockResult, expiringResult] = await Promise.all([
+    query(`
+      SELECT
+        company_name,
+        warehouse_id,
+        warehouse_name,
+        total_capacity_units,
+        total_quantity_on_hand,
+        percent_full
+      FROM v_warehouse_capacity_summary
+      ${capacityWhere.length ? `WHERE ${capacityWhere.join(' AND ')}` : ''}
+      ORDER BY percent_full DESC, warehouse_name
+    `, params),
+    query(`
+      SELECT
+        c.name AS company_name,
+        s.id AS sku_id,
+        s.sku,
+        s.name,
+        s.reorder_point,
+        COALESCE(SUM(il.quantity_on_hand - il.quantity_reserved), 0)::int AS total_available
+      FROM skus s
+      JOIN companies c ON c.id = s.company_id
+      LEFT JOIN inventory_lots il ON il.sku_id = s.id
+      ${skuWhere.length ? `WHERE ${skuWhere.join(' AND ')}` : ''}
+      GROUP BY c.name, s.id, s.sku, s.name, s.reorder_point
+      HAVING COALESCE(SUM(il.quantity_on_hand - il.quantity_reserved), 0) <= s.reorder_point
+      ORDER BY (s.reorder_point - COALESCE(SUM(il.quantity_on_hand - il.quantity_reserved), 0)) DESC, s.sku
+      LIMIT 8
+    `, params),
+    query(`
+      SELECT
+        company_name,
+        warehouse_name,
+        location_code,
+        sku,
+        sku_name,
+        lot_number,
+        expiration_date,
+        quantity_available
+      FROM v_current_inventory_by_location
+      WHERE expiration_date IS NOT NULL
+        AND expiration_date <= CURRENT_DATE + INTERVAL '30 days'
+        ${inventoryWhere.length ? `AND ${inventoryWhere.join(' AND ')}` : ''}
+      ORDER BY expiration_date ASC, sku
+      LIMIT 8
+    `, params)
+  ]);
+
+  const capacityRecommendations = capacityResult.rows
+    .filter((warehouse) => Number(warehouse.percent_full || 0) >= 80)
+    .map((warehouse) => ({
+      type: 'capacity',
+      priority: Number(warehouse.percent_full) >= 90 ? 'high' : 'medium',
+      title: `${warehouse.warehouse_name} is ${Number(warehouse.percent_full).toFixed(1)}% full`,
+      action: 'Move slow-moving or overflow inventory into a warehouse with more open capacity before receiving another large shipment.',
+      reason: `${warehouse.company_name} has ${warehouse.total_quantity_on_hand} units on hand across ${warehouse.total_capacity_units} units of capacity.`,
+      warehouseId: warehouse.warehouse_id
+    }));
+
+  const lowStockRecommendations = lowStockResult.rows.map((sku) => ({
+    type: 'reorder',
+    priority: Number(sku.total_available || 0) <= 0 ? 'high' : 'medium',
+    title: `${sku.sku} is at or below reorder point`,
+    action: 'Create a purchase/receive plan and prioritize replenishment before allocating more outbound stock.',
+    reason: `${sku.name} has ${sku.total_available} available units vs reorder point ${sku.reorder_point}.`,
+    skuId: sku.sku_id
+  }));
+
+  const expiringRecommendations = expiringResult.rows.map((lot) => ({
+    type: 'rotation',
+    priority: 'medium',
+    title: `${lot.sku} lot ${lot.lot_number} expires soon`,
+    action: 'Pick this lot first for outbound shipments or review it for markdown/return handling.',
+    reason: `${lot.quantity_available} available units at ${lot.warehouse_name} / ${lot.location_code}, expiring ${lot.expiration_date}.`
+  }));
+
+  const recommendations = [
+    ...capacityRecommendations,
+    ...lowStockRecommendations,
+    ...expiringRecommendations
+  ];
+
+  res.json({
+    success: true,
+    strategy: 'rule_based',
+    generatedAt: new Date().toISOString(),
+    data: recommendations
+  });
+}));
+
 module.exports = router;

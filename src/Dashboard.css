@@ -320,9 +320,83 @@
 }
 
 .inventory-section,
-.movement-section {
+.movement-section,
+.recommendations-section {
   margin-top: 34px;
 }
+
+.section-heading-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  align-items: flex-start;
+  margin-bottom: 16px;
+}
+
+.section-heading-row h2 {
+  margin-top: 0;
+}
+
+.recommendation-count {
+  background: #dbeafe;
+  border-radius: 999px;
+  color: #1d4ed8;
+  font-weight: 700;
+  padding: 6px 12px;
+}
+
+.recommendations-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 14px;
+}
+
+.recommendation-card,
+.empty-state-card {
+  background: white;
+  border-radius: 10px;
+  box-shadow: 0 4px 8px rgba(0,0,0,0.08);
+  padding: 16px;
+}
+
+.recommendation-card-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.recommendation-card h3 {
+  color: #0f172a;
+  margin: 0 0 8px;
+}
+
+.recommendation-card p {
+  color: #334155;
+  margin: 0 0 10px;
+}
+
+.recommendation-card small,
+.empty-state-card {
+  color: #64748b;
+}
+
+.recommendation-type,
+.priority-pill {
+  border-radius: 999px;
+  color: white;
+  font-size: 0.74rem;
+  font-weight: 800;
+  padding: 5px 9px;
+  text-transform: uppercase;
+}
+
+.recommendation-capacity { background: #7c3aed; }
+.recommendation-reorder { background: #dc2626; }
+.recommendation-rotation { background: #0f766e; }
+.priority-high { background: #b91c1c; }
+.priority-medium { background: #f59e0b; }
+.priority-low { background: #16a34a; }
 
 .inventory-table-wrapper {
   overflow-x: auto;

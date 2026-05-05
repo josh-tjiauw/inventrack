@@ -9,6 +9,7 @@ const Dashboard = () => {
   const [skus, setSkus] = useState([]);
   const [inventory, setInventory] = useState([]);
   const [movements, setMovements] = useState([]);
+  const [recommendations, setRecommendations] = useState([]);
   const [selectedInventory, setSelectedInventory] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -25,10 +26,18 @@ const Dashboard = () => {
           api.get('/api/v2/stock-movements?limit=6')
         ]);
 
+        const recommendationsResponse = await api
+          .get('/api/v2/storage-recommendations')
+          .catch((recommendationsError) => {
+            console.warn('Storage recommendations unavailable:', recommendationsError.message);
+            return { data: { data: [] } };
+          });
+
         setWarehouses(warehousesResponse.data.data || []);
         setSkus(skusResponse.data.data || []);
         setInventory(inventoryResponse.data.data || []);
         setMovements(movementsResponse.data.data || []);
+        setRecommendations(recommendationsResponse.data.data || []);
         setError(null);
       } catch (err) {
         console.error('API Error:', err);
@@ -44,7 +53,7 @@ const Dashboard = () => {
   const totalCapacity = warehouses.reduce((sum, warehouse) => sum + Number(warehouse.total_capacity_units || 0), 0);
   const totalOnHand = inventory.reduce((sum, lot) => sum + Number(lot.quantity_on_hand || 0), 0);
   const totalAvailable = inventory.reduce((sum, lot) => sum + Number(lot.quantity_available || 0), 0);
-  const lowStockSkus = skus.filter((sku) => Number(sku.quantity_available || 0) <= Number(sku.reorder_point || 0));
+  const lowStockSkus = skus.filter((sku) => Number(sku.total_available || 0) <= Number(sku.reorder_point || 0));
 
   if (loading) return (
     <div className="loading-container">
@@ -151,6 +160,40 @@ const Dashboard = () => {
             );
           })}
         </div>
+      </section>
+
+      <section className="recommendations-section">
+        <div className="section-heading-row">
+          <div>
+            <p className="eyebrow">Rule-based engine</p>
+            <h2>Storage Recommendations</h2>
+          </div>
+          <span className="recommendation-count">{recommendations.length} active</span>
+        </div>
+
+        {recommendations.length === 0 ? (
+          <div className="empty-state-card">
+            No capacity, reorder, or expiration recommendations right now.
+          </div>
+        ) : (
+          <div className="recommendations-grid">
+            {recommendations.slice(0, 6).map((recommendation, index) => (
+              <article key={`${recommendation.type}-${index}`} className="recommendation-card">
+                <div className="recommendation-card-header">
+                  <span className={`recommendation-type recommendation-${recommendation.type}`}>
+                    {recommendation.type}
+                  </span>
+                  <span className={`priority-pill priority-${recommendation.priority}`}>
+                    {recommendation.priority}
+                  </span>
+                </div>
+                <h3>{recommendation.title}</h3>
+                <p>{recommendation.action}</p>
+                <small>{recommendation.reason}</small>
+              </article>
+            ))}
+          </div>
+        )}
       </section>
 
       <section className="inventory-section">

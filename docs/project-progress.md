@@ -1,6 +1,6 @@
 # Inventrack Project Progress
 
-Last updated: 2026-05-04
+Last updated: 2026-05-05
 
 ## Current Direction
 
@@ -61,8 +61,15 @@ Josh approved direct updates to `main` for Inventrack progress. Clawie should st
   - `GET /api/v2/skus`
   - `GET /api/v2/inventory`
   - `GET /api/v2/stock-movements`
+  - `GET /api/v2/storage-recommendations`
 - PostgreSQL v2 integration tests added:
   - `backend/__tests__/postgres-v2.test.js`
+
+### Frontend implementation
+
+- Dashboard consumes live PostgreSQL v2 read endpoints for warehouse capacity, SKUs, inventory lots, and movement history.
+- Dashboard now shows a rule-based Storage Recommendations panel fed by `/api/v2/storage-recommendations`.
+- Low-stock dashboard alert now uses the v2 SKU `total_available` field instead of the legacy inventory field name.
 
 ### Deployment prep
 
@@ -83,7 +90,7 @@ Josh approved direct updates to `main` for Inventrack progress. Clawie should st
 
 ## Current Status
 
-The backend is deployed on Render and connected to Neon PostgreSQL. The frontend dashboard has been updated to consume the PostgreSQL `/api/v2` read endpoints for warehouses, SKUs, inventory, and stock movements.
+The backend is deployed on Render and connected to Neon PostgreSQL. The frontend dashboard has been updated to consume the PostgreSQL `/api/v2` read endpoints for warehouses, SKUs, inventory, stock movements, and rule-based storage recommendations.
 
 The project has started the real PostgreSQL migration.
 
@@ -118,6 +125,7 @@ The new PostgreSQL implementation starts at:
    - SKU catalog
    - inventory by location
    - stock movement history
+   - receive/export workflows
 6. Add GitHub Actions CI for:
    - frontend build
    - backend tests
@@ -165,4 +173,5 @@ Once backend is running with `DATABASE_URL`, test:
 /api/v2/skus
 /api/v2/inventory
 /api/v2/stock-movements
+/api/v2/storage-recommendations
 ```

@@ -59,4 +59,17 @@ describeIfPostgres('PostgreSQL v2 API', () => {
     expect(res.body.data.length).toBeLessThanOrEqual(3);
     expect(res.body.data[0]).toHaveProperty('movement_type');
   });
+
+  it('returns rule-based storage recommendations', async () => {
+    const res = await request(app).get('/api/v2/storage-recommendations');
+
+    expect(res.statusCode).toBe(200);
+    expect(res.body).toHaveProperty('success', true);
+    expect(res.body).toHaveProperty('strategy', 'rule_based');
+    expect(Array.isArray(res.body.data)).toBe(true);
+    expect(res.body.data.length).toBeGreaterThanOrEqual(1);
+    expect(res.body.data[0]).toHaveProperty('type');
+    expect(res.body.data[0]).toHaveProperty('priority');
+    expect(res.body.data[0]).toHaveProperty('action');
+  });
 });
