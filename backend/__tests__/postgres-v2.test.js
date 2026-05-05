@@ -1,0 +1,62 @@
+const request = require('supertest');
+const { app } = require('../server');
+const { closePool } = require('../db/postgres');
+
+const describeIfPostgres = process.env.DATABASE_URL || process.env.POSTGRES_URL ? describe : describe.skip;
+
+describeIfPostgres('PostgreSQL v2 API', () => {
+  afterAll(async () => {
+    await closePool();
+  });
+
+  it('returns PostgreSQL health and table counts', async () => {
+    const res = await request(app).get('/api/v2/health');
+
+    expect(res.statusCode).toBe(200);
+    expect(res.body).toHaveProperty('success', true);
+    expect(res.body).toHaveProperty('database', 'PostgreSQL');
+    expect(res.body.counts.companies).toBeGreaterThanOrEqual(1);
+    expect(res.body.counts.skus).toBeGreaterThanOrEqual(1);
+  });
+
+  it('returns warehouse capacity summaries', async () => {
+    const res = await request(app).get('/api/v2/warehouses');
+
+    expect(res.statusCode).toBe(200);
+    expect(res.body).toHaveProperty('success', true);
+    expect(Array.isArray(res.body.data)).toBe(true);
+    expect(res.body.data.length).toBeGreaterThanOrEqual(1);
+    expect(res.body.data[0]).toHaveProperty('warehouse_name');
+    expect(res.body.data[0]).toHaveProperty('percent_full');
+  });
+
+  it('returns low-stock SKUs', async () => {
+    const res = await request(app).get('/api/v2/skus?lowStock=true');
+
+    expect(res.statusCode).toBe(200);
+    expect(res.body).toHaveProperty('success', true);
+    expect(Array.isArray(res.body.data)).toBe(true);
+    expect(res.body.data.some(sku => sku.sku === 'TOOL-SCAN-HAND')).toBe(true);
+  });
+
+  it('returns current inventory by location', async () => {
+    const res = await request(app).get('/api/v2/inventory');
+
+    expect(res.statusCode).toBe(200);
+    expect(res.body).toHaveProperty('success', true);
+    expect(Array.isArray(res.body.data)).toBe(true);
+    expect(res.body.data.length).toBeGreaterThanOrEqual(1);
+    expect(res.body.data[0]).toHaveProperty('location_code');
+    expect(res.body.data[0]).toHaveProperty('quantity_available');
+  });
+
+  it('returns stock movement history with a limit', async () => {
+    const res = await request(app).get('/api/v2/stock-movements?limit=3');
+
+    expect(res.statusCode).toBe(200);
+    expect(res.body).toHaveProperty('success', true);
+    expect(Array.isArray(res.body.data)).toBe(true);
+    expect(res.body.data.length).toBeLessThanOrEqual(3);
+    expect(res.body.data[0]).toHaveProperty('movement_type');
+  });
+});
