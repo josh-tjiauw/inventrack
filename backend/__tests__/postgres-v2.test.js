@@ -30,6 +30,18 @@ describeIfPostgres('PostgreSQL v2 API', () => {
     expect(res.body.data[0]).toHaveProperty('percent_full');
   });
 
+  it('returns storage location capacity and inventory summaries', async () => {
+    const res = await request(app).get('/api/v2/storage-locations');
+
+    expect(res.statusCode).toBe(200);
+    expect(res.body).toHaveProperty('success', true);
+    expect(Array.isArray(res.body.data)).toBe(true);
+    expect(res.body.data.length).toBeGreaterThanOrEqual(1);
+    expect(res.body.data[0]).toHaveProperty('location_code');
+    expect(res.body.data[0]).toHaveProperty('capacity_units');
+    expect(res.body.data[0]).toHaveProperty('percent_full');
+  });
+
   it('returns low-stock SKUs', async () => {
     const res = await request(app).get('/api/v2/skus?lowStock=true');
 

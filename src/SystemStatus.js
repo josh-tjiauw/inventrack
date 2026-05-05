@@ -4,6 +4,7 @@ import './Dashboard.css';
 
 const endpointChecks = [
   { label: 'Warehouses', path: '/api/v2/warehouses' },
+  { label: 'Storage Locations', path: '/api/v2/storage-locations' },
   { label: 'SKUs', path: '/api/v2/skus' },
   { label: 'Inventory', path: '/api/v2/inventory' },
   { label: 'Shipments', path: '/api/v2/shipments?limit=5' },

@@ -71,6 +71,62 @@ router.get('/warehouses', asyncHandler(async (req, res) => {
   res.json({ success: true, data: result.rows });
 }));
 
+router.get('/storage-locations', asyncHandler(async (req, res) => {
+  const companyId = optionalInt(req.query.companyId);
+  const warehouseId = optionalInt(req.query.warehouseId);
+  const status = req.query.status;
+  const params = [];
+  const where = [];
+
+  if (companyId) {
+    params.push(companyId);
+    where.push(`w.company_id = $${params.length}`);
+  }
+
+  if (warehouseId) {
+    params.push(warehouseId);
+    where.push(`sl.warehouse_id = $${params.length}`);
+  }
+
+  if (status) {
+    params.push(status);
+    where.push(`sl.status = $${params.length}`);
+  }
+
+  const result = await query(`
+    SELECT
+      c.id AS company_id,
+      c.name AS company_name,
+      w.id AS warehouse_id,
+      w.name AS warehouse_name,
+      w.address AS warehouse_address,
+      w.status AS warehouse_status,
+      sl.id AS location_id,
+      sl.code AS location_code,
+      sl.name AS location_name,
+      sl.type AS location_type,
+      sl.capacity_units,
+      sl.status AS location_status,
+      COALESCE(SUM(il.quantity_on_hand), 0)::int AS quantity_on_hand,
+      COALESCE(SUM(il.quantity_reserved), 0)::int AS quantity_reserved,
+      COALESCE(SUM(il.quantity_on_hand - il.quantity_reserved), 0)::int AS quantity_available,
+      COUNT(DISTINCT il.sku_id)::int AS sku_count,
+      CASE
+        WHEN sl.capacity_units = 0 THEN 0
+        ELSE ROUND((COALESCE(SUM(il.quantity_on_hand), 0)::numeric / sl.capacity_units) * 100, 2)
+      END AS percent_full
+    FROM storage_locations sl
+    JOIN warehouses w ON w.id = sl.warehouse_id
+    JOIN companies c ON c.id = w.company_id
+    LEFT JOIN inventory_lots il ON il.location_id = sl.id
+    ${where.length ? `WHERE ${where.join(' AND ')}` : ''}
+    GROUP BY c.id, c.name, w.id, w.name, w.address, w.status, sl.id, sl.code, sl.name, sl.type, sl.capacity_units, sl.status
+    ORDER BY c.name, w.name, sl.code
+  `, params);
+
+  res.json({ success: true, data: result.rows });
+}));
+
 router.get('/skus', asyncHandler(async (req, res) => {
   const companyId = optionalInt(req.query.companyId);
   const category = req.query.category;

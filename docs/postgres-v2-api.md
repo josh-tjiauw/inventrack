@@ -46,6 +46,26 @@ GET /api/v2/warehouses?companyId=1
 
 Uses the `v_warehouse_capacity_summary` reporting view.
 
+### Storage locations
+
+```text
+GET /api/v2/storage-locations
+GET /api/v2/storage-locations?companyId=1
+GET /api/v2/storage-locations?warehouseId=1
+GET /api/v2/storage-locations?status=active
+```
+
+Returns location-level capacity, status, SKU count, on-hand/reserved/available quantity, and percent-full metrics.
+
+Backed by:
+
+- `storage_locations`
+- `warehouses`
+- `companies`
+- `inventory_lots`
+
+The `/warehouses` React page uses this endpoint as a read-only warehouse/location map for demo and troubleshooting.
+
 ### SKUs
 
 ```text

@@ -692,6 +692,63 @@
   margin: 4px 0 0;
 }
 
+.warehouse-map-grid {
+  display: grid;
+  gap: 16px;
+  grid-template-columns: repeat(auto-fit, minmax(270px, 1fr));
+}
+
+.warehouse-location-card {
+  background: white;
+  border-radius: 10px;
+  box-shadow: 0 4px 8px rgba(0,0,0,0.08);
+  padding: 16px;
+}
+
+.location-card-header {
+  align-items: flex-start;
+  display: flex;
+  gap: 12px;
+  justify-content: space-between;
+}
+
+.location-card-header h3 {
+  color: #0f172a;
+  margin: 0 0 4px;
+}
+
+.location-card-header p {
+  color: #64748b;
+  margin: 0;
+}
+
+.location-metrics {
+  display: grid;
+  gap: 8px;
+  grid-template-columns: repeat(2, 1fr);
+  margin-top: 12px;
+}
+
+.location-metrics span {
+  background: #f8fafc;
+  border-radius: 8px;
+  color: #334155;
+  font-weight: 700;
+  padding: 8px;
+}
+
+.location-type-pill {
+  background: #dbeafe;
+  border-radius: 999px;
+  color: #1d4ed8;
+  display: inline-block;
+  font-size: 0.78rem;
+  font-weight: 800;
+  margin-top: 14px;
+  padding: 6px 10px;
+  text-transform: uppercase;
+}
+
 @media (max-width: 700px) {
   .dashboard-header,
   .movement-card,

@@ -58,6 +58,7 @@ Josh approved direct updates to `main` for Inventrack progress. Clawie should st
 - New v2 endpoints:
   - `GET /api/v2/health`
   - `GET /api/v2/warehouses`
+  - `GET /api/v2/storage-locations`
   - `GET /api/v2/skus`
   - `GET /api/v2/inventory`
   - `GET /api/v2/stock-movements`
@@ -71,6 +72,7 @@ Josh approved direct updates to `main` for Inventrack progress. Clawie should st
 - Dashboard consumes live PostgreSQL v2 read endpoints for warehouse capacity, SKUs, inventory lots, and movement history.
 - Dashboard now shows a rule-based Storage Recommendations panel fed by `/api/v2/storage-recommendations`.
 - Low-stock dashboard alert now uses the v2 SKU `total_available` field instead of the legacy inventory field name.
+- New `/warehouses` Warehouse Location Map page added. It uses `/api/v2/storage-locations`, supports warehouse/status filters, and shows location capacity, current stock, available stock, SKU count, and maintenance status.
 - New `/skus` SKU Catalog page added. It uses `/api/v2/skus`, supports category and low-stock filters, and shows on-hand/reserved/available/reorder status.
 - New `/shipments` Shipment Board page added. It uses `/api/v2/shipments`, supports type/status filters, and expands shipment line receive/export progress.
 - New `/status` System Status page added. It shows the configured API base URL, backend mode, PostgreSQL health, v2 table counts, and smoke-check results for the main v2 read endpoints.
@@ -94,7 +96,7 @@ Josh approved direct updates to `main` for Inventrack progress. Clawie should st
 
 ## Current Status
 
-The backend is deployed on Render and connected to Neon PostgreSQL. The frontend dashboard, SKU Catalog page, Shipment Board page, and System Status page consume PostgreSQL `/api/v2` read endpoints for warehouses, SKUs, inventory, shipments, stock movements, health, and rule-based storage recommendations.
+The backend is deployed on Render and connected to Neon PostgreSQL. The frontend dashboard, Warehouse Location Map, SKU Catalog page, Shipment Board page, and System Status page consume PostgreSQL `/api/v2` read endpoints for warehouses, storage locations, SKUs, inventory, shipments, stock movements, health, and rule-based storage recommendations.
 
 The project has started the real PostgreSQL migration.
 
@@ -125,7 +127,6 @@ The new PostgreSQL implementation starts at:
 3. Build transaction-safe receive/export service functions.
 4. Update frontend screens to consume `/api/v2` read endpoints.
 5. Add Postgres-backed UI pages:
-   - warehouse overview
    - inventory by location
    - stock movement history
    - receive/export workflows backed by PostgreSQL writes
@@ -173,6 +174,7 @@ Once backend is running with `DATABASE_URL`, test:
 ```text
 /api/v2/health
 /api/v2/warehouses
+/api/v2/storage-locations
 /api/v2/skus
 /api/v2/inventory
 /api/v2/shipments
