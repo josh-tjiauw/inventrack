@@ -30,6 +30,37 @@ const positiveIntOrThrow = (value, fieldName) => {
   return parsed;
 };
 
+const requiredString = (value, fieldName) => {
+  const normalized = String(value || '').trim();
+  if (!normalized) {
+    const err = new Error(`${fieldName} is required`);
+    err.status = 400;
+    throw err;
+  }
+  return normalized;
+};
+
+const nonNegativeIntOrThrow = (value, fieldName, fallback = 0) => {
+  const input = value === undefined || value === null || value === '' ? fallback : value;
+  const parsed = Number.parseInt(input, 10);
+  if (!Number.isFinite(parsed) || parsed < 0) {
+    const err = new Error(`${fieldName} must be a non-negative integer`);
+    err.status = 400;
+    throw err;
+  }
+  return parsed;
+};
+
+const optionalEnumOrThrow = (value, fieldName, allowedValues, fallback) => {
+  const normalized = String(value || fallback).trim();
+  if (!allowedValues.includes(normalized)) {
+    const err = new Error(`${fieldName} must be one of: ${allowedValues.join(', ')}`);
+    err.status = 400;
+    throw err;
+  }
+  return normalized;
+};
+
 router.get('/health', asyncHandler(async (req, res) => {
   const [{ rows: tableCounts }, ping] = await Promise.all([
     query(`
@@ -51,6 +82,56 @@ router.get('/health', asyncHandler(async (req, res) => {
     checkedAt: ping.now,
     counts: tableCounts[0]
   });
+}));
+
+router.post('/warehouses', asyncHandler(async (req, res) => {
+  const companyId = positiveIntOrThrow(req.body.companyId, 'companyId');
+  const name = requiredString(req.body.name, 'name');
+  const address = req.body.address ? String(req.body.address).trim() : null;
+  const status = optionalEnumOrThrow(req.body.status, 'status', ['active', 'inactive', 'maintenance'], 'active');
+
+  const result = await query(`
+    INSERT INTO warehouses (company_id, name, address, status)
+    VALUES ($1, $2, $3, $4)
+    RETURNING id AS warehouse_id, company_id, name AS warehouse_name, address, status AS warehouse_status, created_at
+  `, [companyId, name, address, status]);
+
+  res.status(201).json({ success: true, data: result.rows[0] });
+}));
+
+router.post('/storage-locations', asyncHandler(async (req, res) => {
+  const warehouseId = positiveIntOrThrow(req.body.warehouseId, 'warehouseId');
+  const code = requiredString(req.body.code, 'code');
+  const name = requiredString(req.body.name, 'name');
+  const type = optionalEnumOrThrow(req.body.type, 'type', ['shelf', 'bin', 'rack', 'cold_storage', 'overflow', 'staging'], 'bin');
+  const capacityUnits = positiveIntOrThrow(req.body.capacityUnits || req.body.capacity_units, 'capacityUnits');
+  const status = optionalEnumOrThrow(req.body.status, 'status', ['active', 'inactive', 'maintenance'], 'active');
+
+  const result = await query(`
+    INSERT INTO storage_locations (warehouse_id, code, name, type, capacity_units, status)
+    VALUES ($1, $2, $3, $4, $5, $6)
+    RETURNING id AS location_id, warehouse_id, code AS location_code, name AS location_name, type AS location_type, capacity_units, status AS location_status, created_at
+  `, [warehouseId, code, name, type, capacityUnits, status]);
+
+  res.status(201).json({ success: true, data: result.rows[0] });
+}));
+
+router.post('/skus', asyncHandler(async (req, res) => {
+  const companyId = positiveIntOrThrow(req.body.companyId, 'companyId');
+  const sku = requiredString(req.body.sku, 'sku');
+  const name = requiredString(req.body.name, 'name');
+  const category = requiredString(req.body.category, 'category');
+  const description = req.body.description ? String(req.body.description).trim() : null;
+  const unitOfMeasure = optionalEnumOrThrow(req.body.unitOfMeasure || req.body.unit_of_measure, 'unitOfMeasure', ['each', 'case', 'pallet', 'box', 'kg', 'lb'], 'each');
+  const reorderPoint = nonNegativeIntOrThrow(req.body.reorderPoint || req.body.reorder_point, 'reorderPoint', 0);
+
+  const result = await query(`
+    INSERT INTO skus (company_id, sku, name, category, description, unit_of_measure, reorder_point)
+    VALUES ($1, $2, $3, $4, $5, $6, $7)
+    RETURNING id AS sku_id, company_id, sku, name, category, description, unit_of_measure, reorder_point, created_at
+  `, [companyId, sku, name, category, description, unitOfMeasure, reorderPoint]);
+
+  res.status(201).json({ success: true, data: result.rows[0] });
 }));
 
 router.get('/warehouses', asyncHandler(async (req, res) => {

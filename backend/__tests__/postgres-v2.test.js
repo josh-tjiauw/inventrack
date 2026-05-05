@@ -51,6 +51,58 @@ describeIfPostgres('PostgreSQL v2 API', () => {
     expect(res.body.data.some(sku => sku.sku === 'TOOL-SCAN-HAND')).toBe(true);
   });
 
+  it('creates a PostgreSQL warehouse', async () => {
+    const res = await request(app)
+      .post('/api/v2/warehouses')
+      .send({
+        companyId: 1,
+        name: 'CI Automation Warehouse',
+        address: '100 CI Way',
+        status: 'active'
+      });
+
+    expect(res.statusCode).toBe(201);
+    expect(res.body).toHaveProperty('success', true);
+    expect(res.body.data).toHaveProperty('warehouse_name', 'CI Automation Warehouse');
+    expect(res.body.data).toHaveProperty('warehouse_status', 'active');
+  });
+
+  it('creates a PostgreSQL storage location', async () => {
+    const res = await request(app)
+      .post('/api/v2/storage-locations')
+      .send({
+        warehouseId: 1,
+        code: 'CI-BIN-01',
+        name: 'CI Test Bin 01',
+        type: 'bin',
+        capacityUnits: 75,
+        status: 'active'
+      });
+
+    expect(res.statusCode).toBe(201);
+    expect(res.body).toHaveProperty('success', true);
+    expect(res.body.data).toHaveProperty('location_code', 'CI-BIN-01');
+    expect(res.body.data).toHaveProperty('capacity_units', 75);
+  });
+
+  it('creates a PostgreSQL SKU', async () => {
+    const res = await request(app)
+      .post('/api/v2/skus')
+      .send({
+        companyId: 1,
+        sku: 'CI-SKU-WRITE-001',
+        name: 'CI Write Test SKU',
+        category: 'Tools',
+        unitOfMeasure: 'each',
+        reorderPoint: 3
+      });
+
+    expect(res.statusCode).toBe(201);
+    expect(res.body).toHaveProperty('success', true);
+    expect(res.body.data).toHaveProperty('sku', 'CI-SKU-WRITE-001');
+    expect(res.body.data).toHaveProperty('reorder_point', 3);
+  });
+
   it('returns current inventory by location', async () => {
     const res = await request(app).get('/api/v2/inventory');
 

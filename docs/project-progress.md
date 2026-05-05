@@ -72,13 +72,16 @@ Josh approved direct updates to `main` for Inventrack progress. Clawie should st
   - `GET /api/v2/stock-movements`
   - `GET /api/v2/shipments`
   - `GET /api/v2/storage-recommendations`
+  - `POST /api/v2/warehouses`
+  - `POST /api/v2/storage-locations`
+  - `POST /api/v2/skus`
   - `POST /api/v2/receive-stock`
   - `POST /api/v2/export-stock`
 - PostgreSQL v2 integration tests added:
   - `backend/__tests__/postgres-v2.test.js`
 - Backend PostgreSQL test script added:
   - `npm run test:postgres` from `backend/` runs the v2 test file directly and is wired into CI with a disposable PostgreSQL service.
-- PostgreSQL v2 transaction tests now cover manual receive/export success paths and insufficient-capacity/insufficient-stock conflict paths against disposable CI data.
+- PostgreSQL v2 tests now cover warehouse, storage location, and SKU create endpoints plus manual receive/export success paths and insufficient-capacity/insufficient-stock conflict paths against disposable CI data.
 
 ### Frontend implementation
 
@@ -137,11 +140,7 @@ The new PostgreSQL implementation starts at:
 
 ## Next Best Work Items
 
-1. Add more write endpoints for the relational model:
-   - create warehouse
-   - create storage location
-   - create SKU
-   - shipment creation and line assignment
+1. Add shipment creation and line assignment write endpoints for the relational model.
 2. Add shipment-backed receive/export workflows that update shipment line progress.
 3. Add unit-level service tests around `backend/services/stockTransactions.js` once a lightweight transaction mock/test harness is in place.
 4. Expand the relational model write surface after service extraction.
@@ -192,6 +191,9 @@ Once backend is running with `DATABASE_URL`, test:
 /api/v2/shipments
 /api/v2/stock-movements
 /api/v2/storage-recommendations
+POST /api/v2/warehouses
+POST /api/v2/storage-locations
+POST /api/v2/skus
 POST /api/v2/receive-stock
 POST /api/v2/export-stock
 ```
