@@ -4,6 +4,7 @@ import Home from './Home';
 import About from './About';
 import Dashboard from './Dashboard';
 import WarehouseMap from './WarehouseMap';
+import InventoryExplorer from './InventoryExplorer';
 import SkuCatalog from './SkuCatalog';
 import ShipmentBoard from './ShipmentBoard';
 import MovementHistory from './MovementHistory';
@@ -24,6 +25,7 @@ function App() {
             <Route path="/about" element={<About />} />
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/warehouses" element={<WarehouseMap />} />
+            <Route path="/inventory" element={<InventoryExplorer />} />
             <Route path="/skus" element={<SkuCatalog />} />
             <Route path="/shipments" element={<ShipmentBoard />} />
             <Route path="/movements" element={<MovementHistory />} />
