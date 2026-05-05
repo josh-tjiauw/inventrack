@@ -8,6 +8,7 @@ This folder contains a sample relational database for a redesigned enterprise ve
 - `transaction-practice.sql`
 - `reporting-views.sql`
 - `validation-checks.sql`
+- `api-read-model-queries.sql`
 - [`../../docs/postgresql-relationship-map.md`](../../docs/postgresql-relationship-map.md)
 
 The schema/seed file includes:
@@ -22,6 +23,7 @@ The schema/seed file includes:
 - Practice queries
 - Reusable reporting views for dashboards and API read models
 - Validation checks for tenant isolation, quantity rules, location capacity, and stock movement direction
+- Backend-style API read-model query examples
 
 The relationship map explains how the tables connect, which join paths support common screens/API endpoints, and which tenant boundaries must be preserved in application code.
 
@@ -195,6 +197,24 @@ The validation script should return zero rows for a healthy seed dataset. It che
 - Receive/export/move ledger entries use the expected source and destination location patterns.
 
 This gives the practice database a QA-style safety net before the relational model is translated into API endpoints or migrations.
+
+## API Read Model Queries
+
+After loading the seed data, run the API read-model examples:
+
+```bash
+psql -d inventrack_practice -f database/postgresql-practice/api-read-model-queries.sql
+```
+
+The examples are SELECT-only and model backend result sets for:
+
+- `GET /api/warehouses/:warehouseId/inventory`
+- `GET /api/skus/:skuId/availability`
+- `GET /api/shipments/:shipmentNumber`
+- `GET /api/stock-movements?skuId=&limit=&before=`
+- `GET /api/dashboard/operations-summary`
+
+They intentionally bind a `company_id` in each query CTE to reinforce tenant isolation at the SQL boundary.
 
 ## Good Practice Questions
 
