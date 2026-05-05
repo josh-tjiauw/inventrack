@@ -7,5 +7,8 @@
       "source": "/(.*)",
       "destination": "/index.html"
     }
-  ]
+  ],
+  "env": {
+    "REACT_APP_API_BASE_URL": "https://inventrack-api-v2l8.onrender.com"
+  }
 }
