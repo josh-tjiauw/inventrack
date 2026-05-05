@@ -3,6 +3,7 @@ const express = require('express');
 const mongoose = require('mongoose');
 const shipmentRoutes = require('./routes/shipments');
 const v2Routes = require('./routes/v2');
+const { pingPostgres } = require('./db/postgres');
 const cors = require('cors');
 
 // Validate required environment variables when running the legacy MongoDB-backed app.
@@ -23,12 +24,6 @@ if (!process.env.OPENAI_API_KEY) {
 
 const app = express();
 
-import('./routes/ai.js').then((module) => {
-  app.use('/api/ai', module.default);
-}).catch((err) => {
-  console.error('Failed to load AI routes:', err.message);
-});
-
 // Middleware
 const corsOptions = {
   origin: process.env.CORS_ORIGIN || 'http://localhost:3000',
@@ -40,6 +35,7 @@ app.use(express.json());
 app.use('/api/shelves', require('./routes/shelves'));
 app.use('/api/shipments', shipmentRoutes);
 app.use('/api/v2', v2Routes);
+app.use('/api/ai', require('./routes/ai'));
 
 // Legacy MongoDB connection. The PostgreSQL v2 API uses backend/db/postgres.js.
 const connectDB = async () => {
@@ -58,11 +54,35 @@ const connectDB = async () => {
 };
 
 // Routes
-app.get('/api/health', (req, res) => {
-  res.json({ 
-    status: 'OK', 
-    database: mongoose.connection.readyState === 1 ? 'Connected' : 'Disconnected' 
-  });
+app.get('/api/health', async (req, res, next) => {
+  try {
+    const postgresConfigured = Boolean(process.env.DATABASE_URL || process.env.POSTGRES_URL);
+    let postgres = {
+      configured: postgresConfigured,
+      status: postgresConfigured ? 'unchecked' : 'not_configured'
+    };
+
+    if (postgresConfigured) {
+      const ping = await pingPostgres();
+      postgres = {
+        configured: true,
+        status: 'connected',
+        checkedAt: ping.now
+      };
+    }
+
+    res.json({
+      status: 'OK',
+      mode: postgresConfigured ? 'postgres_v2' : 'legacy_mongo',
+      legacyMongo: {
+        configured: Boolean(process.env.MONGODB_URI),
+        status: mongoose.connection.readyState === 1 ? 'connected' : 'disconnected'
+      },
+      postgres
+    });
+  } catch (err) {
+    next(err);
+  }
 });
 
 // Global error handling middleware

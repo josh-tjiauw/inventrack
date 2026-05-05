@@ -6,14 +6,15 @@ services:
     buildCommand: npm install
     startCommand: npm start
     healthCheckPath: /api/health
+    plan: free
     envVars:
       - key: NODE_ENV
         value: production
       - key: CORS_ORIGIN
         sync: false
+      - key: DATABASE_URL
+        sync: false
       - key: MONGODB_URI
         sync: false
       - key: OPENAI_API_KEY
-        sync: false
-      - key: DATABASE_URL
         sync: false

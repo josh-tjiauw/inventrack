@@ -70,12 +70,20 @@ Josh approved direct updates to `main` for Inventrack progress. Clawie should st
   - `vercel.json`
 - Render blueprint added:
   - `render.yaml`
+- Heroku/Procfile backend start command fixed:
+  - `Procfile`
+- Root Heroku postbuild now installs backend dependencies:
+  - `package.json`
+- Health check now validates PostgreSQL when `DATABASE_URL` is configured:
+  - `backend/server.js`
 - Frontend production env example added:
   - `.env.production.example`
 - Backend production env example added:
   - `backend/.env.production.example`
 
 ## Current Status
+
+The backend is now deploy-ready for a PostgreSQL v2 deployment once a hosted `DATABASE_URL` is provided.
 
 The project has started the real PostgreSQL migration.
 
