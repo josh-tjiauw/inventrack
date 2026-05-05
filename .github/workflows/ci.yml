@@ -7,30 +7,71 @@ on:
     branches: [main]
 
 jobs:
-  test:
+  frontend-build:
     runs-on: ubuntu-latest
-
-    services:
-      mongodb:
-        image: mongo:7
-        ports:
-          - 27017:27017
 
     steps:
       - uses: actions/checkout@v4
 
       - uses: actions/setup-node@v4
         with:
-          node-version: '18'
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install frontend dependencies
+        run: npm ci
+
+      - name: Build frontend
+        run: npm run build
+        env:
+          CI: true
+          REACT_APP_API_BASE_URL: http://localhost:5000
+
+  backend-postgres-tests:
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: inventrack_ci
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: backend/package-lock.json
+
+      - name: Install PostgreSQL client
+        run: sudo apt-get update && sudo apt-get install -y postgresql-client
+
+      - name: Load PostgreSQL schema, seed data, and reporting views
+        run: |
+          psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f database/postgresql-practice/inventrack_enterprise_schema_seed.sql
+          psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f database/postgresql-practice/reporting-views.sql
+        env:
+          DATABASE_URL: postgres://postgres:postgres@localhost:5432/inventrack_ci
 
       - name: Install backend dependencies
         working-directory: ./backend
         run: npm ci
 
-      - name: Run tests
+      - name: Run PostgreSQL v2 backend tests
         working-directory: ./backend
-        run: npm test
+        run: npm run test:postgres
         env:
-          MONGODB_URI: mongodb://localhost:27017/inventrack-test
+          DATABASE_URL: postgres://postgres:postgres@localhost:5432/inventrack_ci
           OPENAI_API_KEY: test-key
           PORT: 5000

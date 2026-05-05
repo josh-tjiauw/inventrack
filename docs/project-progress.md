@@ -68,6 +68,8 @@ Josh approved direct updates to `main` for Inventrack progress. Clawie should st
   - `POST /api/v2/export-stock`
 - PostgreSQL v2 integration tests added:
   - `backend/__tests__/postgres-v2.test.js`
+- Backend PostgreSQL test script added:
+  - `npm run test:postgres` from `backend/` runs the v2 test file directly and is wired into CI with a disposable PostgreSQL service.
 
 ### Frontend implementation
 
@@ -85,6 +87,11 @@ Josh approved direct updates to `main` for Inventrack progress. Clawie should st
 
 ### Deployment prep
 
+- GitHub Actions CI added:
+  - `.github/workflows/ci.yml`
+  - Builds the React frontend.
+  - Loads PostgreSQL schema/seed data plus reporting views into a disposable PostgreSQL service.
+  - Runs the PostgreSQL v2 backend test suite.
 - Vercel config added:
   - `vercel.json`
 - Render blueprint added:
@@ -129,10 +136,7 @@ The new PostgreSQL implementation starts at:
    - shipment creation and line assignment
 3. Harden transaction-safe receive/export service functions with dedicated service-layer tests.
 4. Add shipment-backed receive/export workflows that update shipment line progress.
-5. Add GitHub Actions CI for:
-   - frontend build
-   - backend tests
-   - PostgreSQL schema validation
+5. Expand GitHub Actions CI with service-layer tests for transaction-safe receive/export writes.
 6. Keep Vercel/Render/Neon deployment checks documented and reproducible.
 
 ## How Josh Can See Progress
