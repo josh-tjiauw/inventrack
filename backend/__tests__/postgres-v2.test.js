@@ -96,4 +96,71 @@ describeIfPostgres('PostgreSQL v2 API', () => {
     expect(res.body.data[0]).toHaveProperty('priority');
     expect(res.body.data[0]).toHaveProperty('action');
   });
+
+  it('commits a manual stock receipt transaction', async () => {
+    const res = await request(app)
+      .post('/api/v2/receive-stock')
+      .send({
+        skuId: 6,
+        locationId: 5,
+        quantity: 2,
+        supplier: 'CI Test Supplier',
+        lotNumber: 'CI-RECEIVE-SCAN-001'
+      });
+
+    expect(res.statusCode).toBe(201);
+    expect(res.body).toHaveProperty('success', true);
+    expect(res.body.data.movement).toHaveProperty('movement_type', 'receive');
+    expect(res.body.data.movement).toHaveProperty('quantity', 2);
+    expect(res.body.data.lot).toHaveProperty('lot_number', 'CI-RECEIVE-SCAN-001');
+    expect(res.body.data.location).toHaveProperty('locationId', '5');
+  });
+
+  it('rejects receive transactions that exceed location capacity', async () => {
+    const res = await request(app)
+      .post('/api/v2/receive-stock')
+      .send({
+        skuId: 1,
+        locationId: 1,
+        quantity: 10000,
+        supplier: 'CI Overflow Test'
+      });
+
+    expect(res.statusCode).toBe(409);
+    expect(res.body).toHaveProperty('success', false);
+    expect(res.body.message).toMatch(/exceed location capacity/i);
+  });
+
+  it('commits a manual stock export transaction with FEFO picks', async () => {
+    const res = await request(app)
+      .post('/api/v2/export-stock')
+      .send({
+        skuId: 1,
+        quantity: 5,
+        destination: 'CI Test Customer'
+      });
+
+    expect(res.statusCode).toBe(201);
+    expect(res.body).toHaveProperty('success', true);
+    expect(res.body.data).toHaveProperty('requestedQuantity', 5);
+    expect(res.body.data).toHaveProperty('exportedQuantity', 5);
+    expect(Array.isArray(res.body.data.picks)).toBe(true);
+    expect(res.body.data.picks.length).toBeGreaterThanOrEqual(1);
+    expect(res.body.data.picks[0]).toHaveProperty('quantity');
+    expect(res.body.data.picks[0]).toHaveProperty('movementId');
+  });
+
+  it('rejects export transactions when available stock is insufficient', async () => {
+    const res = await request(app)
+      .post('/api/v2/export-stock')
+      .send({
+        skuId: 6,
+        quantity: 10000,
+        destination: 'CI Shortage Test'
+      });
+
+    expect(res.statusCode).toBe(409);
+    expect(res.body).toHaveProperty('success', false);
+    expect(res.body.message).toMatch(/available for export/i);
+  });
 });

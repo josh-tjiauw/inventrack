@@ -75,6 +75,7 @@ Josh approved direct updates to `main` for Inventrack progress. Clawie should st
   - `backend/__tests__/postgres-v2.test.js`
 - Backend PostgreSQL test script added:
   - `npm run test:postgres` from `backend/` runs the v2 test file directly and is wired into CI with a disposable PostgreSQL service.
+- PostgreSQL v2 transaction tests now cover manual receive/export success paths and insufficient-capacity/insufficient-stock conflict paths against disposable CI data.
 
 ### Frontend implementation
 
@@ -138,9 +139,9 @@ The new PostgreSQL implementation starts at:
    - create storage location
    - create SKU
    - shipment creation and line assignment
-2. Harden transaction-safe receive/export service functions with dedicated service-layer tests.
+2. Extract transaction-safe receive/export logic into dedicated service functions for easier unit-level testing and reuse by shipment-backed workflows.
 3. Add shipment-backed receive/export workflows that update shipment line progress.
-4. Expand GitHub Actions CI with service-layer tests for transaction-safe receive/export writes.
+4. Expand the relational model write surface after service extraction.
 5. Keep Vercel/Render/Neon deployment checks documented and reproducible.
 
 ## How Josh Can See Progress
