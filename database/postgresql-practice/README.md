@@ -2,12 +2,13 @@
 
 This folder contains a sample relational database for a redesigned enterprise version of Inventrack.
 
-## File
+## Files
 
 - `inventrack_enterprise_schema_seed.sql`
 - `transaction-practice.sql`
 - `reporting-views.sql`
 - `validation-checks.sql`
+- [`../../docs/postgresql-relationship-map.md`](../../docs/postgresql-relationship-map.md)
 
 The schema/seed file includes:
 
@@ -21,6 +22,8 @@ The schema/seed file includes:
 - Practice queries
 - Reusable reporting views for dashboards and API read models
 - Validation checks for tenant isolation, quantity rules, location capacity, and stock movement direction
+
+The relationship map explains how the tables connect, which join paths support common screens/API endpoints, and which tenant boundaries must be preserved in application code.
 
 ## Tables Included
 
