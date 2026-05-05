@@ -568,9 +568,79 @@
 .status-ok { background: #16a34a; }
 .status-warning { background: #dc2626; }
 
+.shipment-board-list {
+  display: grid;
+  gap: 14px;
+}
+
+.shipment-card {
+  background: white;
+  border-radius: 10px;
+  box-shadow: 0 4px 8px rgba(0,0,0,0.08);
+  overflow: hidden;
+}
+
+.shipment-card-main {
+  align-items: center;
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+  display: grid;
+  gap: 18px;
+  grid-template-columns: 1.3fr 0.9fr 1fr;
+  padding: 16px;
+  text-align: left;
+  width: 100%;
+}
+
+.shipment-card-main:hover {
+  background: #f8fafc;
+}
+
+.shipment-card-main h3 {
+  color: #0f172a;
+  margin: 10px 0 4px;
+}
+
+.shipment-card-main p,
+.shipment-meta,
+.shipment-line-row p {
+  color: #64748b;
+  margin: 4px 0 0;
+}
+
+.shipment-progress-block {
+  display: grid;
+  gap: 8px;
+}
+
+.shipment-progress-block strong {
+  color: #0f172a;
+  font-size: 1.35rem;
+}
+
+.shipment-lines {
+  border-top: 1px solid #e5e7eb;
+  display: grid;
+}
+
+.shipment-line-row {
+  align-items: center;
+  display: grid;
+  gap: 12px;
+  grid-template-columns: 1fr repeat(3, minmax(110px, auto));
+  padding: 12px 16px;
+}
+
+.shipment-line-row:not(:last-child) {
+  border-bottom: 1px solid #e5e7eb;
+}
+
 @media (max-width: 700px) {
   .dashboard-header,
-  .movement-card {
+  .movement-card,
+  .shipment-card-main,
+  .shipment-line-row {
     grid-template-columns: 1fr;
     display: grid;
   }

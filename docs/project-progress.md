@@ -61,6 +61,7 @@ Josh approved direct updates to `main` for Inventrack progress. Clawie should st
   - `GET /api/v2/skus`
   - `GET /api/v2/inventory`
   - `GET /api/v2/stock-movements`
+  - `GET /api/v2/shipments`
   - `GET /api/v2/storage-recommendations`
 - PostgreSQL v2 integration tests added:
   - `backend/__tests__/postgres-v2.test.js`
@@ -71,6 +72,7 @@ Josh approved direct updates to `main` for Inventrack progress. Clawie should st
 - Dashboard now shows a rule-based Storage Recommendations panel fed by `/api/v2/storage-recommendations`.
 - Low-stock dashboard alert now uses the v2 SKU `total_available` field instead of the legacy inventory field name.
 - New `/skus` SKU Catalog page added. It uses `/api/v2/skus`, supports category and low-stock filters, and shows on-hand/reserved/available/reorder status.
+- New `/shipments` Shipment Board page added. It uses `/api/v2/shipments`, supports type/status filters, and expands shipment line receive/export progress.
 
 ### Deployment prep
 
@@ -91,7 +93,7 @@ Josh approved direct updates to `main` for Inventrack progress. Clawie should st
 
 ## Current Status
 
-The backend is deployed on Render and connected to Neon PostgreSQL. The frontend dashboard and SKU Catalog page consume PostgreSQL `/api/v2` read endpoints for warehouses, SKUs, inventory, stock movements, and rule-based storage recommendations.
+The backend is deployed on Render and connected to Neon PostgreSQL. The frontend dashboard, SKU Catalog page, and Shipment Board page consume PostgreSQL `/api/v2` read endpoints for warehouses, SKUs, inventory, shipments, stock movements, and rule-based storage recommendations.
 
 The project has started the real PostgreSQL migration.
 
@@ -125,7 +127,7 @@ The new PostgreSQL implementation starts at:
    - warehouse overview
    - inventory by location
    - stock movement history
-   - receive/export workflows
+   - receive/export workflows backed by PostgreSQL writes
 6. Add GitHub Actions CI for:
    - frontend build
    - backend tests
@@ -172,6 +174,7 @@ Once backend is running with `DATABASE_URL`, test:
 /api/v2/warehouses
 /api/v2/skus
 /api/v2/inventory
+/api/v2/shipments
 /api/v2/stock-movements
 /api/v2/storage-recommendations
 ```

@@ -230,6 +230,78 @@ router.get('/stock-movements', asyncHandler(async (req, res) => {
   res.json({ success: true, data: result.rows });
 }));
 
+router.get('/shipments', asyncHandler(async (req, res) => {
+  const companyId = optionalInt(req.query.companyId);
+  const shipmentType = req.query.shipmentType;
+  const status = req.query.status;
+  const limit = parsePositiveInt(req.query.limit, 50, 200);
+  const params = [];
+  const where = [];
+
+  if (companyId) {
+    params.push(companyId);
+    where.push(`sh.company_id = $${params.length}`);
+  }
+
+  if (shipmentType) {
+    params.push(shipmentType);
+    where.push(`sh.shipment_type = $${params.length}`);
+  }
+
+  if (status) {
+    params.push(status);
+    where.push(`sh.status = $${params.length}`);
+  }
+
+  params.push(limit);
+  const limitParam = `$${params.length}`;
+
+  const result = await query(`
+    SELECT
+      sh.id AS shipment_id,
+      sh.company_id,
+      c.name AS company_name,
+      sh.shipment_number,
+      sh.shipment_type,
+      sh.status,
+      sh.supplier_or_customer,
+      sh.expected_date,
+      sh.completed_at,
+      sh.created_at,
+      u.id AS created_by_user_id,
+      u.name AS created_by_user_name,
+      COUNT(sl.id)::int AS line_count,
+      COALESCE(SUM(sl.quantity), 0)::int AS total_quantity,
+      COALESCE(SUM(sl.received_quantity), 0)::int AS total_received_quantity,
+      COALESCE(SUM(sl.exported_quantity), 0)::int AS total_exported_quantity,
+      COALESCE(
+        json_agg(
+          json_build_object(
+            'shipmentLineId', sl.id,
+            'skuId', s.id,
+            'sku', s.sku,
+            'skuName', s.name,
+            'quantity', sl.quantity,
+            'receivedQuantity', sl.received_quantity,
+            'exportedQuantity', sl.exported_quantity
+          ) ORDER BY s.sku
+        ) FILTER (WHERE sl.id IS NOT NULL),
+        '[]'::json
+      ) AS lines
+    FROM shipments sh
+    JOIN companies c ON c.id = sh.company_id
+    LEFT JOIN users u ON u.id = sh.created_by_user_id
+    LEFT JOIN shipment_lines sl ON sl.shipment_id = sh.id
+    LEFT JOIN skus s ON s.id = sl.sku_id
+    ${where.length ? `WHERE ${where.join(' AND ')}` : ''}
+    GROUP BY sh.id, c.name, u.id, u.name
+    ORDER BY sh.expected_date DESC NULLS LAST, sh.created_at DESC, sh.id DESC
+    LIMIT ${limitParam}
+  `, params);
+
+  res.json({ success: true, data: result.rows });
+}));
+
 router.get('/storage-recommendations', asyncHandler(async (req, res) => {
   const companyId = optionalInt(req.query.companyId);
   const params = [];

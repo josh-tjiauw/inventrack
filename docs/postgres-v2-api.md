@@ -81,6 +81,38 @@ GET /api/v2/stock-movements?limit=25
 
 Uses the `v_stock_movement_history` view.
 
+### Shipments
+
+```text
+GET /api/v2/shipments
+GET /api/v2/shipments?companyId=1
+GET /api/v2/shipments?shipmentType=inbound
+GET /api/v2/shipments?shipmentType=outbound
+GET /api/v2/shipments?status=scheduled
+GET /api/v2/shipments?limit=25
+```
+
+Returns shipment headers with aggregated line counts, total quantities, receive/export progress, and embedded shipment line summaries.
+
+Backed by:
+
+- `shipments`
+- `shipment_lines`
+- `skus`
+- `companies`
+- `users`
+
+The `/shipments` React page uses this endpoint as a read-only operations board until PostgreSQL write endpoints are implemented.
+
+### Storage recommendations
+
+```text
+GET /api/v2/storage-recommendations
+GET /api/v2/storage-recommendations?companyId=1
+```
+
+Returns rule-based recommendations for capacity pressure, low-stock SKUs, and near-expiration lots without requiring a paid AI API call.
+
 ## Why this matters
 
 This begins the real migration away from the shelf-centered MongoDB prototype and toward the enterprise relational model documented in:

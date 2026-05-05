@@ -60,6 +60,18 @@ describeIfPostgres('PostgreSQL v2 API', () => {
     expect(res.body.data[0]).toHaveProperty('movement_type');
   });
 
+  it('returns shipment summaries with line details', async () => {
+    const res = await request(app).get('/api/v2/shipments?limit=3');
+
+    expect(res.statusCode).toBe(200);
+    expect(res.body).toHaveProperty('success', true);
+    expect(Array.isArray(res.body.data)).toBe(true);
+    expect(res.body.data.length).toBeLessThanOrEqual(3);
+    expect(res.body.data[0]).toHaveProperty('shipment_number');
+    expect(res.body.data[0]).toHaveProperty('line_count');
+    expect(Array.isArray(res.body.data[0].lines)).toBe(true);
+  });
+
   it('returns rule-based storage recommendations', async () => {
     const res = await request(app).get('/api/v2/storage-recommendations');
 

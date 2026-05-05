@@ -40,6 +40,13 @@ const Navbar = () => {
           >
             SKU Catalog
           </NavLink>
+
+          <NavLink 
+            to="/shipments" 
+            className={({ isActive }) => isActive ? "nav-link active" : "nav-link"}
+          >
+            Shipments
+          </NavLink>
           
           <NavLink 
             to="/receive" 
