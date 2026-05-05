@@ -136,6 +136,48 @@ describeIfPostgres('PostgreSQL v2 API', () => {
     expect(Array.isArray(res.body.data[0].lines)).toBe(true);
   });
 
+  it('creates a shipment with line assignments', async () => {
+    const res = await request(app)
+      .post('/api/v2/shipments')
+      .send({
+        companyId: 1,
+        shipmentNumber: 'CI-IN-2026-0001',
+        shipmentType: 'inbound',
+        status: 'scheduled',
+        supplierOrCustomer: 'CI Supplier',
+        expectedDate: '2026-06-01',
+        createdByUserId: 2,
+        lines: [
+          { skuId: 1, quantity: 5 },
+          { skuId: 2, quantity: 7 }
+        ]
+      });
+
+    expect(res.statusCode).toBe(201);
+    expect(res.body).toHaveProperty('success', true);
+    expect(res.body.data).toHaveProperty('shipment_number', 'CI-IN-2026-0001');
+    expect(res.body.data).toHaveProperty('shipment_type', 'inbound');
+    expect(Array.isArray(res.body.data.lines)).toBe(true);
+    expect(res.body.data.lines).toHaveLength(2);
+    expect(res.body.data.lines[0]).toHaveProperty('quantity');
+    expect(res.body.data.lines[0]).toHaveProperty('sku');
+  });
+
+  it('rejects shipment creation without line assignments', async () => {
+    const res = await request(app)
+      .post('/api/v2/shipments')
+      .send({
+        companyId: 1,
+        shipmentNumber: 'CI-IN-EMPTY',
+        shipmentType: 'inbound',
+        lines: []
+      });
+
+    expect(res.statusCode).toBe(400);
+    expect(res.body).toHaveProperty('success', false);
+    expect(res.body.message).toMatch(/lines must include/i);
+  });
+
   it('returns rule-based storage recommendations', async () => {
     const res = await request(app).get('/api/v2/storage-recommendations');
 

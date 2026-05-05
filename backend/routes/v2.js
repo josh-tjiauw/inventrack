@@ -1,5 +1,5 @@
 const express = require('express');
-const { query, pingPostgres } = require('../db/postgres');
+const { query, withTransaction, pingPostgres } = require('../db/postgres');
 const { receiveStock, exportStock } = require('../services/stockTransactions');
 
 const router = express.Router();
@@ -448,6 +448,69 @@ router.get('/shipments', asyncHandler(async (req, res) => {
   `, params);
 
   res.json({ success: true, data: result.rows });
+}));
+
+router.post('/shipments', asyncHandler(async (req, res) => {
+  const companyId = positiveIntOrThrow(req.body.companyId, 'companyId');
+  const shipmentNumber = requiredString(req.body.shipmentNumber || req.body.shipment_number, 'shipmentNumber');
+  const shipmentType = optionalEnumOrThrow(req.body.shipmentType || req.body.shipment_type, 'shipmentType', ['inbound', 'outbound'], 'inbound');
+  const status = optionalEnumOrThrow(req.body.status, 'status', ['draft', 'scheduled', 'in_progress', 'completed', 'cancelled'], 'draft');
+  const supplierOrCustomer = req.body.supplierOrCustomer || req.body.supplier_or_customer
+    ? String(req.body.supplierOrCustomer || req.body.supplier_or_customer).trim()
+    : null;
+  const expectedDate = req.body.expectedDate || req.body.expected_date || null;
+  const createdByUserId = optionalInt(req.body.createdByUserId || req.body.created_by_user_id) || null;
+  const lines = Array.isArray(req.body.lines) ? req.body.lines : [];
+
+  if (lines.length === 0) {
+    const err = new Error('lines must include at least one shipment line');
+    err.status = 400;
+    throw err;
+  }
+
+  const normalizedLines = lines.map((line, index) => ({
+    skuId: positiveIntOrThrow(line.skuId || line.sku_id, `lines[${index}].skuId`),
+    quantity: positiveIntOrThrow(line.quantity, `lines[${index}].quantity`)
+  }));
+
+  const result = await withTransaction(async (client) => {
+    const shipmentResult = await client.query(`
+      INSERT INTO shipments (company_id, shipment_number, shipment_type, status, supplier_or_customer, expected_date, created_by_user_id)
+      VALUES ($1, $2, $3, $4, $5, $6, $7)
+      RETURNING id AS shipment_id, company_id, shipment_number, shipment_type, status, supplier_or_customer, expected_date, created_by_user_id, created_at
+    `, [companyId, shipmentNumber, shipmentType, status, supplierOrCustomer, expectedDate, createdByUserId]);
+
+    const shipment = shipmentResult.rows[0];
+    const insertedLines = [];
+
+    for (const line of normalizedLines) {
+      const skuResult = await client.query('SELECT id, sku, name FROM skus WHERE id = $1 AND company_id = $2', [line.skuId, companyId]);
+      if (skuResult.rowCount === 0) {
+        const err = new Error(`SKU ${line.skuId} does not exist for company ${companyId}`);
+        err.status = 400;
+        throw err;
+      }
+
+      const lineResult = await client.query(`
+        INSERT INTO shipment_lines (shipment_id, sku_id, quantity)
+        VALUES ($1, $2, $3)
+        RETURNING id AS shipment_line_id, shipment_id, sku_id, quantity, received_quantity, exported_quantity, created_at
+      `, [shipment.shipment_id, line.skuId, line.quantity]);
+
+      insertedLines.push({
+        ...lineResult.rows[0],
+        sku: skuResult.rows[0].sku,
+        skuName: skuResult.rows[0].name
+      });
+    }
+
+    return {
+      ...shipment,
+      lines: insertedLines
+    };
+  });
+
+  res.status(201).json({ success: true, data: result });
 }));
 
 router.post('/receive-stock', asyncHandler(async (req, res) => {
