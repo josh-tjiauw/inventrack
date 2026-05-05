@@ -73,6 +73,7 @@ Josh approved direct updates to `main` for Inventrack progress. Clawie should st
 - Low-stock dashboard alert now uses the v2 SKU `total_available` field instead of the legacy inventory field name.
 - New `/skus` SKU Catalog page added. It uses `/api/v2/skus`, supports category and low-stock filters, and shows on-hand/reserved/available/reorder status.
 - New `/shipments` Shipment Board page added. It uses `/api/v2/shipments`, supports type/status filters, and expands shipment line receive/export progress.
+- New `/status` System Status page added. It shows the configured API base URL, backend mode, PostgreSQL health, v2 table counts, and smoke-check results for the main v2 read endpoints.
 
 ### Deployment prep
 
@@ -93,7 +94,7 @@ Josh approved direct updates to `main` for Inventrack progress. Clawie should st
 
 ## Current Status
 
-The backend is deployed on Render and connected to Neon PostgreSQL. The frontend dashboard, SKU Catalog page, and Shipment Board page consume PostgreSQL `/api/v2` read endpoints for warehouses, SKUs, inventory, shipments, stock movements, and rule-based storage recommendations.
+The backend is deployed on Render and connected to Neon PostgreSQL. The frontend dashboard, SKU Catalog page, Shipment Board page, and System Status page consume PostgreSQL `/api/v2` read endpoints for warehouses, SKUs, inventory, shipments, stock movements, health, and rule-based storage recommendations.
 
 The project has started the real PostgreSQL migration.
 

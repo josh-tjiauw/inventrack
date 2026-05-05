@@ -636,11 +636,68 @@
   border-bottom: 1px solid #e5e7eb;
 }
 
+.summary-card-text {
+  font-size: 0.95rem !important;
+  overflow-wrap: anywhere;
+}
+
+.status-grid {
+  display: grid;
+  gap: 14px;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+}
+
+.status-card {
+  background: white;
+  border-radius: 10px;
+  box-shadow: 0 4px 8px rgba(0,0,0,0.08);
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 16px;
+}
+
+.status-card span {
+  color: #64748b;
+  font-weight: 700;
+  text-transform: capitalize;
+}
+
+.status-card strong {
+  color: #0f172a;
+  font-size: 1.35rem;
+}
+
+.status-check-list {
+  background: white;
+  border-radius: 10px;
+  box-shadow: 0 4px 8px rgba(0,0,0,0.08);
+  overflow: hidden;
+}
+
+.status-check-row {
+  align-items: center;
+  display: grid;
+  gap: 14px;
+  grid-template-columns: 1fr auto auto;
+  padding: 14px 16px;
+}
+
+.status-check-row:not(:last-child) {
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.status-check-row p {
+  color: #64748b;
+  margin: 4px 0 0;
+}
+
 @media (max-width: 700px) {
   .dashboard-header,
   .movement-card,
   .shipment-card-main,
-  .shipment-line-row {
+  .shipment-line-row,
+  .status-check-row {
     grid-template-columns: 1fr;
     display: grid;
   }

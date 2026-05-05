@@ -5,6 +5,7 @@ import About from './About';
 import Dashboard from './Dashboard';
 import SkuCatalog from './SkuCatalog';
 import ShipmentBoard from './ShipmentBoard';
+import SystemStatus from './SystemStatus';
 import ShipmentReceiver from './ShipmentReceiver';
 import ExportShipment from './ExportShipment';
 import Navbar from './Navbar';
@@ -22,6 +23,7 @@ function App() {
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/skus" element={<SkuCatalog />} />
             <Route path="/shipments" element={<ShipmentBoard />} />
+            <Route path="/status" element={<SystemStatus />} />
             <Route path="/receive" element={<ShipmentReceiver />} />
             <Route path="/export" element={<ExportShipment />} /> {/* New route */}
           </Routes>

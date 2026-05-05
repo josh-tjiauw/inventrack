@@ -47,6 +47,13 @@ const Navbar = () => {
           >
             Shipments
           </NavLink>
+
+          <NavLink 
+            to="/status" 
+            className={({ isActive }) => isActive ? "nav-link active" : "nav-link"}
+          >
+            Status
+          </NavLink>
           
           <NavLink 
             to="/receive" 
