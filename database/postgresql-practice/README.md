@@ -7,6 +7,7 @@ This folder contains a sample relational database for a redesigned enterprise ve
 - `inventrack_enterprise_schema_seed.sql`
 - `transaction-practice.sql`
 - `reporting-views.sql`
+- `api-read-model-queries.sql`
 
 The schema/seed file includes:
 
@@ -19,6 +20,7 @@ The schema/seed file includes:
 - Sample seed data
 - Practice queries
 - Reusable reporting views for dashboards and API read models
+- Backend-style API read-model query examples
 
 ## Tables Included
 
@@ -144,6 +146,24 @@ The views turn normalized enterprise tables into dashboard/API-friendly read mod
 - `v_stock_movement_history` — readable append-only movement ledger for audits and operations review.
 
 These views are intentionally read-only practice artifacts. They help connect relational modeling to the screens and API responses an enterprise inventory system would need.
+
+## API Read Model Queries
+
+After loading the seed data, run the API read-model examples:
+
+```bash
+psql -d inventrack_practice -f database/postgresql-practice/api-read-model-queries.sql
+```
+
+The examples are SELECT-only and model backend result sets for:
+
+- `GET /api/warehouses/:warehouseId/inventory`
+- `GET /api/skus/:skuId/availability`
+- `GET /api/shipments/:shipmentNumber`
+- `GET /api/stock-movements?skuId=&limit=&before=`
+- `GET /api/dashboard/operations-summary`
+
+They intentionally bind a `company_id` in each query CTE to reinforce tenant isolation at the SQL boundary.
 
 ## Good Practice Questions
 
