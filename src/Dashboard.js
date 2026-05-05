@@ -2,34 +2,34 @@ import React, { useState, useEffect } from 'react';
 import api from './api';
 import './Dashboard.css';
 
+const formatNumber = (value) => Number(value || 0).toLocaleString();
+
 const Dashboard = () => {
-  const [shelves, setShelves] = useState([]);
-  const [selectedShelf, setSelectedShelf] = useState(null);
+  const [warehouses, setWarehouses] = useState([]);
+  const [skus, setSkus] = useState([]);
+  const [inventory, setInventory] = useState([]);
+  const [movements, setMovements] = useState([]);
+  const [selectedInventory, setSelectedInventory] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [reload, setReload] = useState(false);
-  const [lowStockShelves, setLowStockShelves] = useState([]);
-  const [showAlert, setShowAlert] = useState(false);
 
-  // Fetch shelves from backend
   useEffect(() => {
-    const fetchShelves = async () => {
+    const fetchEnterpriseInventory = async () => {
       try {
         setLoading(true);
-        const response = await api.get('/shelves');
-        setShelves(response.data);
+        const [warehousesResponse, skusResponse, inventoryResponse, movementsResponse] = await Promise.all([
+          api.get('/api/v2/warehouses'),
+          api.get('/api/v2/skus'),
+          api.get('/api/v2/inventory'),
+          api.get('/api/v2/stock-movements?limit=6')
+        ]);
+
+        setWarehouses(warehousesResponse.data.data || []);
+        setSkus(skusResponse.data.data || []);
+        setInventory(inventoryResponse.data.data || []);
+        setMovements(movementsResponse.data.data || []);
         setError(null);
-        
-        // Check for low stock shelves
-        const lowStock = response.data.filter(shelf => {
-          const percentage = (shelf.current / shelf.capacity) * 100;
-          return percentage <= 20
-        });
-        
-        setLowStockShelves(lowStock);
-        if (lowStock.length > 0) {
-          setShowAlert(true);
-        }
       } catch (err) {
         console.error('API Error:', err);
         setError(err.response?.data?.message || err.message);
@@ -38,45 +38,18 @@ const Dashboard = () => {
       }
     };
 
-    fetchShelves();
+    fetchEnterpriseInventory();
   }, [reload]);
 
-  // Seed initial data
-  const seedDatabase = async () => {
-    try {
-      await api.post('/shelves/seed');
-      setReload(prev => !prev); // Trigger re-fetch
-    } catch (err) {
-      setError('Failed to seed database: ' + err.message);
-    }
-  };
-
-  // Calculate shelf status
-  const getShelfStatus = (shelf) => {
-    const percentage = Math.round((shelf.current / shelf.capacity) * 100);
-    
-    let status, color;
-    if (percentage === 0) {
-      status = 'Empty (Low Stock)';
-      color = '#0096FF'; // blue
-    } else if (percentage === 100) {
-      status = 'Full';
-      color = '#F44336'; // Red
-    } else if (percentage <= 20) {
-      status = 'Low Stock';
-      color = '#FF5722'; // Orange for low stock
-    } else {
-      status = `${percentage}% Full`;
-      color = '#FFC107'; // Yellow
-    }
-
-    return { percentage, status, color };
-  };
+  const totalCapacity = warehouses.reduce((sum, warehouse) => sum + Number(warehouse.total_capacity_units || 0), 0);
+  const totalOnHand = inventory.reduce((sum, lot) => sum + Number(lot.quantity_on_hand || 0), 0);
+  const totalAvailable = inventory.reduce((sum, lot) => sum + Number(lot.quantity_available || 0), 0);
+  const lowStockSkus = skus.filter((sku) => Number(sku.quantity_available || 0) <= Number(sku.reorder_point || 0));
 
   if (loading) return (
     <div className="loading-container">
       <div className="loading-spinner"></div>
-      <p>Loading inventory data...</p>
+      <p>Loading PostgreSQL inventory data...</p>
     </div>
   );
 
@@ -84,6 +57,9 @@ const Dashboard = () => {
     <div className="error-container">
       <h2>Error Loading Data</h2>
       <p>{error}</p>
+      <p className="error-hint">
+        Make sure the Render API is awake and Vercel has REACT_APP_API_BASE_URL set to the Render backend URL.
+      </p>
       <button onClick={() => setReload(prev => !prev)} className="retry-button">
         Retry
       </button>
@@ -92,31 +68,26 @@ const Dashboard = () => {
 
   return (
     <div className="dashboard-container">
-      {/* Low Stock Alert Banner */}
-      {showAlert && lowStockShelves.length > 0 && (
+      {lowStockSkus.length > 0 && (
         <div className="alert-banner">
           <div className="alert-content">
             <span className="alert-icon">⚠️</span>
             <span>
-              Low Stock Alert: {lowStockShelves.length} Shel{lowStockShelves.length !== 1 ? 'ves' : 'f'} Below 20% Capacity
+              Low Stock Alert: {lowStockSkus.length} SKU{lowStockSkus.length !== 1 ? 's' : ''} at or below reorder point
             </span>
-            <button 
-              className="alert-close"
-              onClick={() => setShowAlert(false)}
-              aria-label="Close alert"
-            >
-              &times;
-            </button>
           </div>
         </div>
       )}
 
       <header className="dashboard-header">
-        <h1>Inventory Dashboard</h1>
+        <div>
+          <p className="eyebrow">PostgreSQL v2 API</p>
+          <h1>Enterprise Inventory Dashboard</h1>
+          <p className="dashboard-subtitle">
+            Live data from the Render backend and Neon PostgreSQL database.
+          </p>
+        </div>
         <div className="header-actions">
-          <button onClick={seedDatabase} className="primary-button">
-            Initialize Sample Data
-          </button>
           <button onClick={() => setReload(prev => !prev)} className="secondary-button">
             Refresh Data
           </button>
@@ -125,121 +96,152 @@ const Dashboard = () => {
 
       <div className="dashboard-summary">
         <div className="summary-card">
-          <h3>Total Shelves</h3>
-          <p>{shelves.length}</p>
+          <h3>Warehouses</h3>
+          <p>{warehouses.length}</p>
+        </div>
+        <div className="summary-card">
+          <h3>SKUs</h3>
+          <p>{skus.length}</p>
+        </div>
+        <div className="summary-card">
+          <h3>On Hand</h3>
+          <p>{formatNumber(totalOnHand)} units</p>
+        </div>
+        <div className="summary-card">
+          <h3>Available</h3>
+          <p>{formatNumber(totalAvailable)} units</p>
         </div>
         <div className="summary-card">
           <h3>Total Capacity</h3>
-          <p>{shelves.reduce((sum, shelf) => sum + shelf.capacity, 0)} units</p>
-        </div>
-        <div className="summary-card">
-          <h3>Space Used</h3>
-          <p>
-            {shelves.reduce((sum, shelf) => sum + shelf.current, 0)} / 
-            {shelves.reduce((sum, shelf) => sum + shelf.capacity, 0)} units
-          </p>
+          <p>{formatNumber(totalCapacity)} units</p>
         </div>
       </div>
 
-      <div className="storage-visualization">
-        <h2>Storage Overview</h2>
+      <section className="storage-visualization">
+        <h2>Warehouse Capacity</h2>
         <div className="shelves-grid">
-          {shelves.map(shelf => {
-            const { percentage, status, color } = getShelfStatus(shelf);
-            
+          {warehouses.map((warehouse) => {
+            const percentFull = Number(warehouse.percent_full || 0);
+            const color = percentFull >= 80 ? '#F44336' : percentFull >= 60 ? '#FF9800' : '#3b82f6';
+
             return (
-              <div 
-                key={shelf._id} 
-                className={`shelf-card ${percentage < 20 && percentage > 0 ? 'low-stock' : ''}`}
-                onClick={() => setSelectedShelf(shelf)}
-              >
+              <div key={warehouse.warehouse_id} className="shelf-card enterprise-card">
                 <div className="shelf-header">
-                  <h3>{shelf.name}</h3>
+                  <h3>{warehouse.warehouse_name}</h3>
                   <span className="shelf-status" style={{ color }}>
-                    {status}
+                    {percentFull.toFixed(2)}% Full
                   </span>
                 </div>
+                <p className="card-meta">{warehouse.company_name}</p>
                 <div className="capacity-bar">
-                  <div 
-                    className="fill-level" 
-                    style={{ width: `${percentage}%`, backgroundColor: color }}
+                  <div
+                    className="fill-level"
+                    style={{ width: `${Math.min(percentFull, 100)}%`, backgroundColor: color }}
                   />
                 </div>
                 <div className="shelf-meta">
-                  <span>{shelf.current}/{shelf.capacity} units</span>
-                  <span>{shelf.items.length} items</span>
+                  <span>{formatNumber(warehouse.total_quantity_on_hand)} on hand</span>
+                  <span>{formatNumber(warehouse.total_capacity_units)} capacity</span>
                 </div>
-                {percentage < 20 && percentage > 0 && (
-                  <div className="low-stock-badge">Low Stock</div>
-                )}
+                <div className="shelf-meta">
+                  <span>{warehouse.location_count} locations</span>
+                  <span>{warehouse.warehouse_status}</span>
+                </div>
               </div>
             );
           })}
         </div>
-      </div>
+      </section>
 
-      {/* Shelf Detail Modal */}
-      {selectedShelf && (
+      <section className="inventory-section">
+        <h2>Current Inventory by Location</h2>
+        <div className="inventory-table-wrapper">
+          <table className="inventory-table">
+            <thead>
+              <tr>
+                <th>SKU</th>
+                <th>Item</th>
+                <th>Warehouse</th>
+                <th>Location</th>
+                <th>Lot</th>
+                <th>On Hand</th>
+                <th>Available</th>
+              </tr>
+            </thead>
+            <tbody>
+              {inventory.map((lot) => (
+                <tr key={lot.inventory_lot_id} onClick={() => setSelectedInventory(lot)}>
+                  <td>{lot.sku}</td>
+                  <td>{lot.sku_name}</td>
+                  <td>{lot.warehouse_name}</td>
+                  <td>{lot.location_code}</td>
+                  <td>{lot.lot_number}</td>
+                  <td>{formatNumber(lot.quantity_on_hand)}</td>
+                  <td>{formatNumber(lot.quantity_available)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section className="movement-section">
+        <h2>Recent Stock Movements</h2>
+        <div className="movement-list">
+          {movements.map((movement) => (
+            <div key={movement.stock_movement_id} className="movement-card">
+              <span className={`movement-type movement-${movement.movement_type}`}>{movement.movement_type}</span>
+              <div>
+                <strong>{movement.sku}</strong> — {formatNumber(movement.quantity)} units
+                <p>{movement.notes || 'No notes'}</p>
+              </div>
+              <span className="movement-user">{movement.performed_by_user_name}</span>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {selectedInventory && (
         <div className="modal-overlay">
           <div className="modal-container">
             <div className="modal-content">
               <div className="modal-header">
-                <h2>{selectedShelf.name}</h2>
-                <button 
+                <h2>{selectedInventory.sku}</h2>
+                <button
                   className="modal-close"
-                  onClick={() => setSelectedShelf(null)}
+                  onClick={() => setSelectedInventory(null)}
                   aria-label="Close modal"
                 >
                   &times;
                 </button>
               </div>
-              
+
               <div className="modal-body">
                 <div className="shelf-stats-grid">
                   <div className="stat-item">
-                    <span className="stat-label">Status:</span>
-                    <span className="stat-value" style={{ color: getShelfStatus(selectedShelf).color }}>
-                      {getShelfStatus(selectedShelf).status}
-                    </span>
-                  </div>
-                  <div className="stat-item">
-                    <span className="stat-label">Capacity:</span>
-                    <span className="stat-value">{selectedShelf.current}/{selectedShelf.capacity} units</span>
+                    <span className="stat-label">Name:</span>
+                    <span className="stat-value">{selectedInventory.sku_name}</span>
                   </div>
                   <div className="stat-item">
                     <span className="stat-label">Category:</span>
-                    <span className="stat-value">{selectedShelf.category || 'General'}</span>
+                    <span className="stat-value">{selectedInventory.category}</span>
                   </div>
-                </div>
-                
-                <div className="capacity-visualization">
-                  <div className="capacity-bar">
-                    <div 
-                      className="fill-level" 
-                      style={{ 
-                        width: `${getShelfStatus(selectedShelf).percentage}%`,
-                        backgroundColor: getShelfStatus(selectedShelf).color
-                      }}
-                    />
+                  <div className="stat-item">
+                    <span className="stat-label">Warehouse:</span>
+                    <span className="stat-value">{selectedInventory.warehouse_name}</span>
                   </div>
-                  <span className="capacity-percentage">
-                    {getShelfStatus(selectedShelf).percentage}% full
-                  </span>
-                </div>
-                
-                <div className="shelf-items-section">
-                  <h3>Items ({selectedShelf.items.length})</h3>
-                  {selectedShelf.items.length > 0 ? (
-                    <ul className="items-list">
-                      {selectedShelf.items.map((item, index) => (
-                        <li key={index} className="item">
-                          {item}
-                        </li>
-                      ))}
-                    </ul>
-                  ) : (
-                    <p className="no-items">No items in this shelf</p>
-                  )}
+                  <div className="stat-item">
+                    <span className="stat-label">Location:</span>
+                    <span className="stat-value">{selectedInventory.location_code}</span>
+                  </div>
+                  <div className="stat-item">
+                    <span className="stat-label">Lot:</span>
+                    <span className="stat-value">{selectedInventory.lot_number}</span>
+                  </div>
+                  <div className="stat-item">
+                    <span className="stat-label">Reserved:</span>
+                    <span className="stat-value">{formatNumber(selectedInventory.quantity_reserved)} units</span>
+                  </div>
                 </div>
               </div>
             </div>

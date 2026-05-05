@@ -83,7 +83,7 @@ Josh approved direct updates to `main` for Inventrack progress. Clawie should st
 
 ## Current Status
 
-The backend is now deploy-ready for a PostgreSQL v2 deployment. A Neon PostgreSQL database has been seeded and validated with the enterprise schema, reporting views, and v2 API test suite.
+The backend is deployed on Render and connected to Neon PostgreSQL. The frontend dashboard has been updated to consume the PostgreSQL `/api/v2` read endpoints for warehouses, SKUs, inventory, and stock movements.
 
 The project has started the real PostgreSQL migration.
 
@@ -102,17 +102,10 @@ The new PostgreSQL implementation starts at:
 
 ## Next Best Work Items
 
-1. Set the hosted backend environment variables and redeploy:
-   - `DATABASE_URL`
-   - `CORS_ORIGIN=https://inventrack-cyan.vercel.app`
-   - `NODE_ENV=production`
-2. Verify hosted endpoints:
-   - `/api/health`
-   - `/api/v2/health`
-   - `/api/v2/warehouses`
-   - `/api/v2/inventory`
-3. Create real PostgreSQL migration files from the practice schema.
-4. Add write endpoints for the relational model:
+1. Set the Vercel frontend environment variable and redeploy:
+   - `REACT_APP_API_BASE_URL=https://inventrack-api-v2l8.onrender.com`
+2. Create real PostgreSQL migration files from the practice schema.
+3. Add write endpoints for the relational model:
    - create warehouse
    - create storage location
    - create SKU
