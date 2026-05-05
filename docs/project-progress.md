@@ -79,6 +79,7 @@ Josh approved direct updates to `main` for Inventrack progress. Clawie should st
 - New `/movements` Stock Movement History page added. It uses `/api/v2/stock-movements`, supports movement type/SKU/limit filters, and shows audit ledger rows with from/to locations, user, and reference metadata.
 - New `/status` System Status page added. It shows the configured API base URL, backend mode, PostgreSQL health, v2 table counts, and smoke-check results for the main v2 read endpoints.
 - `/receive` has been converted from the legacy MongoDB shelf/AI flow into a PostgreSQL v2 Receive Shipment Planner. It reads `/api/v2/skus`, `/api/v2/storage-locations`, and `/api/v2/storage-recommendations`, ranks active locations by available capacity/projected utilization, and clearly marks write actions as pending until transactional receive endpoints exist.
+- `/export` has been converted from the legacy MongoDB shelf flow into a PostgreSQL v2 Export Shipment Planner. It reads `/api/v2/inventory` and `/api/v2/skus`, generates a FEFO-style pick plan from available lots, shows requested/planned/shortage totals, and clearly marks write actions as pending until transactional export endpoints exist.
 
 ### Deployment prep
 
@@ -99,7 +100,7 @@ Josh approved direct updates to `main` for Inventrack progress. Clawie should st
 
 ## Current Status
 
-The backend is deployed on Render and connected to Neon PostgreSQL. The frontend dashboard, Warehouse Location Map, Inventory Explorer, SKU Catalog page, Shipment Board page, Stock Movement History page, Receive Shipment Planner, and System Status page consume PostgreSQL `/api/v2` read endpoints for warehouses, storage locations, SKUs, inventory, shipments, stock movements, health, and rule-based storage recommendations.
+The backend is deployed on Render and connected to Neon PostgreSQL. The frontend dashboard, Warehouse Location Map, Inventory Explorer, SKU Catalog page, Shipment Board page, Stock Movement History page, Receive Shipment Planner, Export Shipment Planner, and System Status page consume PostgreSQL `/api/v2` read endpoints for warehouses, storage locations, SKUs, inventory, shipments, stock movements, health, and rule-based storage recommendations.
 
 The project has started the real PostgreSQL migration.
 
@@ -126,13 +127,12 @@ The new PostgreSQL implementation starts at:
    - receive stock
    - export stock
 3. Build transaction-safe receive/export service functions.
-4. Convert `/export` away from the legacy MongoDB shelf flow into a PostgreSQL v2 export planning screen.
-5. Add Postgres-backed receive/export workflows once transactional write endpoints exist.
-6. Add GitHub Actions CI for:
+4. Add Postgres-backed receive/export workflows once transactional write endpoints exist.
+5. Add GitHub Actions CI for:
    - frontend build
    - backend tests
    - PostgreSQL schema validation
-7. Keep Vercel/Render/Neon deployment checks documented and reproducible.
+6. Keep Vercel/Render/Neon deployment checks documented and reproducible.
 
 ## How Josh Can See Progress
 
