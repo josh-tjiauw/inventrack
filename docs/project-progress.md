@@ -58,6 +58,9 @@ Josh approved direct updates to `main` for Inventrack progress. Clawie should st
   - `pg`
 - PostgreSQL connection pool added:
   - `backend/db/postgres.js`
+- Stock transaction service layer added:
+  - `backend/services/stockTransactions.js`
+  - Encapsulates transaction-safe manual receive/export logic used by `/api/v2/receive-stock` and `/api/v2/export-stock`.
 - New PostgreSQL-backed API route group added:
   - `backend/routes/v2.js`
 - New v2 endpoints:
@@ -139,8 +142,8 @@ The new PostgreSQL implementation starts at:
    - create storage location
    - create SKU
    - shipment creation and line assignment
-2. Extract transaction-safe receive/export logic into dedicated service functions for easier unit-level testing and reuse by shipment-backed workflows.
-3. Add shipment-backed receive/export workflows that update shipment line progress.
+2. Add shipment-backed receive/export workflows that update shipment line progress.
+3. Add unit-level service tests around `backend/services/stockTransactions.js` once a lightweight transaction mock/test harness is in place.
 4. Expand the relational model write surface after service extraction.
 5. Keep Vercel/Render/Neon deployment checks documented and reproducible.
 
