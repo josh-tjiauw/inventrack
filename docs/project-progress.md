@@ -36,6 +36,11 @@ Josh approved direct updates to `main` for Inventrack progress. Clawie should st
 
 - PostgreSQL schema and seed data added:
   - `database/postgresql-practice/inventrack_enterprise_schema_seed.sql`
+- Production-style PostgreSQL migrations added:
+  - `database/migrations/001_enterprise_schema.sql`
+  - `database/migrations/002_reporting_views.sql`
+  - `database/migrations/003_demo_seed.sql`
+  - `database/migrations/README.md`
 - Transaction practice added:
   - `database/postgresql-practice/transaction-practice.sql`
 - Reporting views added:
@@ -90,7 +95,7 @@ Josh approved direct updates to `main` for Inventrack progress. Clawie should st
 - GitHub Actions CI added:
   - `.github/workflows/ci.yml`
   - Builds the React frontend.
-  - Loads PostgreSQL schema/seed data plus reporting views into a disposable PostgreSQL service.
+  - Loads PostgreSQL migrations plus optional demo seed data into a disposable PostgreSQL service.
   - Runs the PostgreSQL v2 backend test suite.
 - Vercel config added:
   - `vercel.json`
@@ -128,16 +133,15 @@ The new PostgreSQL implementation starts at:
 
 ## Next Best Work Items
 
-1. Create real PostgreSQL migration files from the practice schema.
-2. Add more write endpoints for the relational model:
+1. Add more write endpoints for the relational model:
    - create warehouse
    - create storage location
    - create SKU
    - shipment creation and line assignment
-3. Harden transaction-safe receive/export service functions with dedicated service-layer tests.
-4. Add shipment-backed receive/export workflows that update shipment line progress.
-5. Expand GitHub Actions CI with service-layer tests for transaction-safe receive/export writes.
-6. Keep Vercel/Render/Neon deployment checks documented and reproducible.
+2. Harden transaction-safe receive/export service functions with dedicated service-layer tests.
+3. Add shipment-backed receive/export workflows that update shipment line progress.
+4. Expand GitHub Actions CI with service-layer tests for transaction-safe receive/export writes.
+5. Keep Vercel/Render/Neon deployment checks documented and reproducible.
 
 ## How Josh Can See Progress
 
@@ -158,6 +162,7 @@ docs/project-progress.md
 docs/architecture-enterprise-redesign.md
 docs/postgres-v2-api.md
 database/postgresql-practice/
+database/migrations/
 backend/routes/v2.js
 backend/__tests__/postgres-v2.test.js
 ```

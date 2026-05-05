@@ -57,10 +57,11 @@ jobs:
       - name: Install PostgreSQL client
         run: sudo apt-get update && sudo apt-get install -y postgresql-client
 
-      - name: Load PostgreSQL schema, seed data, and reporting views
+      - name: Load PostgreSQL migrations and demo seed data
         run: |
-          psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f database/postgresql-practice/inventrack_enterprise_schema_seed.sql
-          psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f database/postgresql-practice/reporting-views.sql
+          psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f database/migrations/001_enterprise_schema.sql
+          psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f database/migrations/002_reporting_views.sql
+          psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f database/migrations/003_demo_seed.sql
         env:
           DATABASE_URL: postgres://postgres:postgres@localhost:5432/inventrack_ci
 
