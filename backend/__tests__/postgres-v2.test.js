@@ -163,6 +163,72 @@ describeIfPostgres('PostgreSQL v2 API', () => {
     expect(res.body.data.lines[0]).toHaveProperty('sku');
   });
 
+  it('receives against an inbound shipment line and completes the shipment', async () => {
+    const suffix = Date.now();
+    const shipmentRes = await request(app)
+      .post('/api/v2/shipments')
+      .send({
+        companyId: 1,
+        shipmentNumber: `CI-IN-RECEIVE-${suffix}`,
+        shipmentType: 'inbound',
+        status: 'scheduled',
+        supplierOrCustomer: 'CI Shipment Supplier',
+        lines: [{ skuId: 6, quantity: 2 }]
+      });
+
+    expect(shipmentRes.statusCode).toBe(201);
+    const shipmentLineId = shipmentRes.body.data.lines[0].shipment_line_id;
+
+    const receiveRes = await request(app)
+      .post('/api/v2/receive-stock')
+      .send({
+        skuId: 6,
+        locationId: 5,
+        quantity: 2,
+        supplier: 'CI Shipment Supplier',
+        lotNumber: `CI-SHIP-RECEIVE-${suffix}`,
+        shipmentLineId
+      });
+
+    expect(receiveRes.statusCode).toBe(201);
+    expect(receiveRes.body).toHaveProperty('success', true);
+    expect(receiveRes.body.data.movement).toHaveProperty('reference_type', 'shipment_line');
+    expect(receiveRes.body.data.shipmentLine).toHaveProperty('received_quantity', 2);
+    expect(receiveRes.body.data.shipment).toHaveProperty('status', 'completed');
+  });
+
+  it('exports against an outbound shipment line and completes the shipment', async () => {
+    const suffix = Date.now();
+    const shipmentRes = await request(app)
+      .post('/api/v2/shipments')
+      .send({
+        companyId: 1,
+        shipmentNumber: `CI-OUT-EXPORT-${suffix}`,
+        shipmentType: 'outbound',
+        status: 'scheduled',
+        supplierOrCustomer: 'CI Shipment Customer',
+        lines: [{ skuId: 1, quantity: 2 }]
+      });
+
+    expect(shipmentRes.statusCode).toBe(201);
+    const shipmentLineId = shipmentRes.body.data.lines[0].shipment_line_id;
+
+    const exportRes = await request(app)
+      .post('/api/v2/export-stock')
+      .send({
+        skuId: 1,
+        quantity: 2,
+        destination: 'CI Shipment Customer',
+        shipmentLineId
+      });
+
+    expect(exportRes.statusCode).toBe(201);
+    expect(exportRes.body).toHaveProperty('success', true);
+    expect(exportRes.body.data.picks[0]).toHaveProperty('quantity');
+    expect(exportRes.body.data.shipmentLine).toHaveProperty('exported_quantity', 2);
+    expect(exportRes.body.data.shipment).toHaveProperty('status', 'completed');
+  });
+
   it('rejects shipment creation without line assignments', async () => {
     const res = await request(app)
       .post('/api/v2/shipments')

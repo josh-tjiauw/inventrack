@@ -522,6 +522,7 @@ router.post('/receive-stock', asyncHandler(async (req, res) => {
   const supplier = String(req.body.supplier || req.body.reference || 'Manual receive').trim();
   const notes = String(req.body.notes || `Received from ${supplier}`).trim();
   const expirationDate = req.body.expirationDate || null;
+  const shipmentLineId = optionalInt(req.body.shipmentLineId || req.body.shipment_line_id) || null;
 
   const result = await receiveStock({
     skuId,
@@ -531,7 +532,8 @@ router.post('/receive-stock', asyncHandler(async (req, res) => {
     lotNumber,
     supplier,
     notes,
-    expirationDate
+    expirationDate,
+    shipmentLineId
   });
 
   res.status(201).json({ success: true, data: result });
@@ -543,13 +545,15 @@ router.post('/export-stock', asyncHandler(async (req, res) => {
   const performedByUserId = optionalInt(req.body.performedByUserId || req.body.userId) || null;
   const destination = String(req.body.destination || req.body.customer || 'Manual export').trim();
   const notes = String(req.body.notes || `Exported to ${destination}`).trim();
+  const shipmentLineId = optionalInt(req.body.shipmentLineId || req.body.shipment_line_id) || null;
 
   const result = await exportStock({
     skuId,
     quantity,
     performedByUserId,
     destination,
-    notes
+    notes,
+    shipmentLineId
   });
 
   res.status(201).json({ success: true, data: result });

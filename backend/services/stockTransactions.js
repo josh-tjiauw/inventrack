@@ -12,6 +12,40 @@ const conflict = (message) => {
   return err;
 };
 
+const updateShipmentStatus = async (client, shipmentId, shipmentType) => {
+  const progressResult = await client.query(`
+    SELECT
+      COUNT(*)::int AS line_count,
+      BOOL_AND(
+        CASE
+          WHEN $2 = 'inbound' THEN received_quantity >= quantity
+          ELSE exported_quantity >= quantity
+        END
+      ) AS all_complete,
+      BOOL_OR(received_quantity > 0 OR exported_quantity > 0) AS any_progress
+    FROM shipment_lines
+    WHERE shipment_id = $1
+  `, [shipmentId, shipmentType]);
+
+  const progress = progressResult.rows[0];
+  const nextStatus = progress.all_complete
+    ? 'completed'
+    : progress.any_progress
+      ? 'in_progress'
+      : 'scheduled';
+
+  const result = await client.query(`
+    UPDATE shipments
+    SET status = $1,
+        completed_at = CASE WHEN $1 = 'completed' THEN COALESCE(completed_at, NOW()) ELSE NULL END,
+        updated_at = NOW()
+    WHERE id = $2
+    RETURNING id AS shipment_id, shipment_number, shipment_type, status, completed_at
+  `, [nextStatus, shipmentId]);
+
+  return result.rows[0];
+};
+
 const receiveStock = async ({
   skuId,
   locationId,
@@ -19,8 +53,46 @@ const receiveStock = async ({
   performedByUserId = null,
   lotNumber,
   expirationDate = null,
-  notes
+  notes,
+  shipmentLineId = null
 }) => withTransaction(async (client) => {
+  let shipmentProgress = null;
+
+  if (shipmentLineId) {
+    const lineResult = await client.query(`
+      SELECT
+        sl.id AS shipment_line_id,
+        sl.shipment_id,
+        sl.sku_id,
+        sl.quantity,
+        sl.received_quantity,
+        sh.shipment_type,
+        sh.status,
+        sh.shipment_number
+      FROM shipment_lines sl
+      JOIN shipments sh ON sh.id = sl.shipment_id
+      WHERE sl.id = $1
+      FOR UPDATE OF sl, sh
+    `, [shipmentLineId]);
+
+    if (lineResult.rowCount === 0) {
+      throw badRequest('shipmentLineId does not exist');
+    }
+
+    const line = lineResult.rows[0];
+    if (line.shipment_type !== 'inbound') {
+      throw conflict('Only inbound shipment lines can be received');
+    }
+    if (Number(line.sku_id) !== Number(skuId)) {
+      throw conflict('Shipment line SKU does not match receive SKU');
+    }
+    if (Number(line.received_quantity) + quantity > Number(line.quantity)) {
+      throw conflict('Receiving this quantity would exceed the shipment line quantity');
+    }
+
+    shipmentProgress = line;
+  }
+
   const skuLocationResult = await client.query(`
     SELECT
       s.id AS sku_id,
@@ -75,9 +147,32 @@ const receiveStock = async ({
       company_id, sku_id, from_location_id, to_location_id, quantity,
       movement_type, reference_type, reference_id, performed_by_user_id, notes
     )
-    VALUES ($1, $2, NULL, $3, $4, 'receive', 'manual_receive', $5, $6, $7)
+    VALUES ($1, $2, NULL, $3, $4, 'receive', $8, $5, $6, $7)
     RETURNING id, company_id, sku_id, to_location_id, quantity, movement_type, reference_type, notes, created_at
-  `, [skuLocation.company_id, skuId, locationId, quantity, upsertLotResult.rows[0].id, performedByUserId, notes]);
+  `, [
+    skuLocation.company_id,
+    skuId,
+    locationId,
+    quantity,
+    shipmentLineId || upsertLotResult.rows[0].id,
+    performedByUserId,
+    notes,
+    shipmentLineId ? 'shipment_line' : 'manual_receive'
+  ]);
+
+  let shipment = null;
+  if (shipmentProgress) {
+    const lineUpdateResult = await client.query(`
+      UPDATE shipment_lines
+      SET received_quantity = received_quantity + $1,
+          updated_at = NOW()
+      WHERE id = $2
+      RETURNING id AS shipment_line_id, shipment_id, sku_id, quantity, received_quantity, exported_quantity
+    `, [quantity, shipmentLineId]);
+
+    shipment = await updateShipmentStatus(client, shipmentProgress.shipment_id, 'inbound');
+    shipmentProgress = lineUpdateResult.rows[0];
+  }
 
   return {
     lot: upsertLotResult.rows[0],
@@ -93,7 +188,9 @@ const receiveStock = async ({
       warehouseName: skuLocation.warehouse_name,
       quantityOnHandAfterReceive: projectedQuantity,
       capacityUnits: skuLocation.capacity_units
-    }
+    },
+    shipment,
+    shipmentLine: shipmentProgress
   };
 });
 
@@ -102,8 +199,46 @@ const exportStock = async ({
   quantity,
   performedByUserId = null,
   destination,
-  notes
+  notes,
+  shipmentLineId = null
 }) => withTransaction(async (client) => {
+  let shipmentProgress = null;
+
+  if (shipmentLineId) {
+    const lineResult = await client.query(`
+      SELECT
+        sl.id AS shipment_line_id,
+        sl.shipment_id,
+        sl.sku_id,
+        sl.quantity,
+        sl.exported_quantity,
+        sh.shipment_type,
+        sh.status,
+        sh.shipment_number
+      FROM shipment_lines sl
+      JOIN shipments sh ON sh.id = sl.shipment_id
+      WHERE sl.id = $1
+      FOR UPDATE OF sl, sh
+    `, [shipmentLineId]);
+
+    if (lineResult.rowCount === 0) {
+      throw badRequest('shipmentLineId does not exist');
+    }
+
+    const line = lineResult.rows[0];
+    if (line.shipment_type !== 'outbound') {
+      throw conflict('Only outbound shipment lines can be exported');
+    }
+    if (Number(line.sku_id) !== Number(skuId)) {
+      throw conflict('Shipment line SKU does not match export SKU');
+    }
+    if (Number(line.exported_quantity) + quantity > Number(line.quantity)) {
+      throw conflict('Exporting this quantity would exceed the shipment line quantity');
+    }
+
+    shipmentProgress = line;
+  }
+
   const skuResult = await client.query('SELECT id, company_id, sku, name FROM skus WHERE id = $1 FOR UPDATE', [skuId]);
   if (skuResult.rowCount === 0) {
     throw badRequest('SKU does not exist');
@@ -157,9 +292,18 @@ const exportStock = async ({
         company_id, sku_id, from_location_id, to_location_id, quantity,
         movement_type, reference_type, reference_id, performed_by_user_id, notes
       )
-      VALUES ($1, $2, $3, NULL, $4, 'export', 'manual_export', $5, $6, $7)
-      RETURNING id, quantity, created_at
-    `, [sku.company_id, skuId, lot.location_id, pickQuantity, lot.inventory_lot_id, performedByUserId, notes]);
+        VALUES ($1, $2, $3, NULL, $4, 'export', $8, $5, $6, $7)
+        RETURNING id, quantity, created_at
+      `, [
+        sku.company_id,
+        skuId,
+        lot.location_id,
+        pickQuantity,
+        shipmentLineId || lot.inventory_lot_id,
+        performedByUserId,
+        notes,
+        shipmentLineId ? 'shipment_line' : 'manual_export'
+      ]);
 
     picks.push({
       movementId: movementResult.rows[0].id,
@@ -174,6 +318,20 @@ const exportStock = async ({
     });
   }
 
+    let shipment = null;
+    if (shipmentProgress) {
+      const lineUpdateResult = await client.query(`
+        UPDATE shipment_lines
+        SET exported_quantity = exported_quantity + $1,
+            updated_at = NOW()
+        WHERE id = $2
+        RETURNING id AS shipment_line_id, shipment_id, sku_id, quantity, received_quantity, exported_quantity
+      `, [quantity, shipmentLineId]);
+
+      shipment = await updateShipmentStatus(client, shipmentProgress.shipment_id, 'outbound');
+      shipmentProgress = lineUpdateResult.rows[0];
+    }
+
   return {
     sku: {
       skuId: sku.id,
@@ -183,7 +341,9 @@ const exportStock = async ({
     requestedQuantity: quantity,
     exportedQuantity: picks.reduce((sum, pick) => sum + pick.quantity, 0),
     destination,
-    picks
+    picks,
+    shipment,
+    shipmentLine: shipmentProgress
   };
 });
 

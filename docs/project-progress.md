@@ -60,7 +60,7 @@ Josh approved direct updates to `main` for Inventrack progress. Clawie should st
   - `backend/db/postgres.js`
 - Stock transaction service layer added:
   - `backend/services/stockTransactions.js`
-  - Encapsulates transaction-safe manual receive/export logic used by `/api/v2/receive-stock` and `/api/v2/export-stock`.
+  - Encapsulates transaction-safe manual and shipment-backed receive/export logic used by `/api/v2/receive-stock` and `/api/v2/export-stock`.
 - New PostgreSQL-backed API route group added:
   - `backend/routes/v2.js`
 - New v2 endpoints:
@@ -82,7 +82,7 @@ Josh approved direct updates to `main` for Inventrack progress. Clawie should st
   - `backend/__tests__/postgres-v2.test.js`
 - Backend PostgreSQL test script added:
   - `npm run test:postgres` from `backend/` runs the v2 test file directly and is wired into CI with a disposable PostgreSQL service.
-- PostgreSQL v2 tests now cover warehouse, storage location, SKU, and shipment-with-lines create endpoints plus manual receive/export success paths and insufficient-capacity/insufficient-stock conflict paths against disposable CI data.
+- PostgreSQL v2 tests now cover warehouse, storage location, SKU, and shipment-with-lines create endpoints plus manual receive/export success paths, shipment-backed receive/export success paths, and insufficient-capacity/insufficient-stock conflict paths against disposable CI data.
 
 ### Frontend implementation
 
@@ -95,8 +95,8 @@ Josh approved direct updates to `main` for Inventrack progress. Clawie should st
 - New `/shipments` Shipment Board page added. It uses `/api/v2/shipments`, supports type/status filters, expands shipment line receive/export progress, and can create shipment headers with line assignments through transactional `POST /api/v2/shipments`.
 - New `/movements` Stock Movement History page added. It uses `/api/v2/stock-movements`, supports movement type/SKU/limit filters, and shows audit ledger rows with from/to locations, user, and reference metadata.
 - New `/status` System Status page added. It shows the configured API base URL, backend mode, PostgreSQL health, v2 table counts, and smoke-check results for the main v2 read endpoints.
-- `/receive` has been converted from the legacy MongoDB shelf/AI flow into a PostgreSQL v2 Receive Shipment workflow. It reads `/api/v2/skus`, `/api/v2/storage-locations`, and `/api/v2/storage-recommendations`, ranks active locations by available capacity/projected utilization, and can now commit receipts through transactional `POST /api/v2/receive-stock`.
-- `/export` has been converted from the legacy MongoDB shelf flow into a PostgreSQL v2 Export Shipment workflow. It reads `/api/v2/inventory` and `/api/v2/skus`, generates a FEFO-style pick plan from available lots, shows requested/planned/shortage totals, and can now commit exports through transactional `POST /api/v2/export-stock`.
+- `/receive` has been converted from the legacy MongoDB shelf/AI flow into a PostgreSQL v2 Receive Shipment workflow. It reads `/api/v2/skus`, `/api/v2/storage-locations`, and `/api/v2/storage-recommendations`, ranks active locations by available capacity/projected utilization, and can now commit manual or shipment-line receipts through transactional `POST /api/v2/receive-stock`.
+- `/export` has been converted from the legacy MongoDB shelf flow into a PostgreSQL v2 Export Shipment workflow. It reads `/api/v2/inventory` and `/api/v2/skus`, generates a FEFO-style pick plan from available lots, shows requested/planned/shortage totals, and can now commit manual or shipment-line exports through transactional `POST /api/v2/export-stock`.
 
 ### Deployment prep
 
@@ -122,7 +122,7 @@ Josh approved direct updates to `main` for Inventrack progress. Clawie should st
 
 ## Current Status
 
-The backend is deployed on Render and connected to Neon PostgreSQL. The frontend dashboard, Warehouse Location Map, Inventory Explorer, SKU Catalog page, Shipment Board page, Stock Movement History page, Receive Shipment workflow, Export Shipment workflow, and System Status page consume PostgreSQL `/api/v2` endpoints for warehouses, storage locations, SKUs, inventory, shipments, stock movements, health, rule-based storage recommendations, and transaction-safe manual receive/export writes.
+The backend is deployed on Render and connected to Neon PostgreSQL. The frontend dashboard, Warehouse Location Map, Inventory Explorer, SKU Catalog page, Shipment Board page, Stock Movement History page, Receive Shipment workflow, Export Shipment workflow, and System Status page consume PostgreSQL `/api/v2` endpoints for warehouses, storage locations, SKUs, inventory, shipments, stock movements, health, rule-based storage recommendations, and transaction-safe manual/shipment-backed receive/export writes.
 
 The project has started the real PostgreSQL migration.
 
@@ -141,9 +141,9 @@ The new PostgreSQL implementation starts at:
 
 ## Next Best Work Items
 
-1. Add shipment-backed receive/export workflows that update shipment line progress from the newly created shipment records.
+1. Wire the frontend receive/export pages to select existing shipment lines and pass `shipmentLineId` into the v2 write endpoints.
 2. Add unit-level service tests around `backend/services/stockTransactions.js` once a lightweight transaction mock/test harness is in place.
-3. Expand the relational model write surface after service extraction.
+3. Add Playwright browser-to-database workflow tests for create shipment, receive/export against shipment, and movement history verification.
 4. Keep Vercel/Render/Neon deployment checks documented and reproducible.
 
 ## How Josh Can See Progress
