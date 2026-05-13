@@ -174,7 +174,7 @@ This document converts the enterprise redesign requirements into small implement
 
 ## Sprint 9 — Deployment Smoke Checklist
 
-**Status:** Ready
+**Status:** Done
 
 **Requirement:** Keep Vercel/Render/Neon deployment checks reproducible.
 
@@ -188,3 +188,5 @@ This document converts the enterprise redesign requirements into small implement
 - Any script exits non-zero on failed checks.
 
 **Done when:** Deployment health can be verified consistently after each push.
+
+**Completed 2026-05-13:** Added `docs/deployment-smoke-checklist.md` with Vercel/Render/Neon environment variables, route-by-route manual validation steps, and deployment caveats. Added `npm run smoke:deployment`, backed by `scripts/deployment-smoke-check.js`, to verify `/api/v2/health`, the dashboard, shipment board, receive, export, movement history, and key read-model API endpoints; the script exits non-zero on failed checks and supports `FRONTEND_URL`/`API_BASE_URL` overrides. Verified with `node scripts/deployment-smoke-check.js --help` and `npm run build`; local PostgreSQL tests were skipped because this sprint changed deployment documentation/tooling only and no `DATABASE_URL`/`POSTGRES_URL` was configured.

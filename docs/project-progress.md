@@ -8,6 +8,14 @@ Inventrack is being rebuilt from a MongoDB prototype into a PostgreSQL-backed, e
 
 ## 2026-05-13 Sprint Update
 
+- Completed Sprint 9 — Deployment Smoke Checklist.
+- Added `docs/deployment-smoke-checklist.md` with reproducible Vercel/Render/Neon smoke-check steps, required environment variables, manual portfolio route validation, and known deployment caveats.
+- Added `npm run smoke:deployment`, backed by `scripts/deployment-smoke-check.js`, to check `/api/v2/health`, the dashboard, shipment board, receive workflow, export workflow, movement history route, and key read-model API endpoints; the script exits non-zero on failed checks and supports `FRONTEND_URL` / `API_BASE_URL` overrides.
+- Checks: `node scripts/deployment-smoke-check.js --help` passed. `npm run build` passed. PostgreSQL tests were skipped because this sprint changed deployment documentation/tooling only and neither `DATABASE_URL` nor `POSTGRES_URL` was configured in this worker environment.
+- Blockers: none for Sprint 9.
+
+## 2026-05-13 Sprint Update
+
 - Completed Sprint 8 — Auth/RBAC and Tenant Isolation.
 - Added a pragmatic PostgreSQL v2 demo auth middleware with local-friendly default admin behavior, optional strict bearer-token mode, `X-Demo-Role` role simulation, and `X-Company-Id` / `DEMO_COMPANY_ID` tenant scoping.
 - Enforced mutation RBAC across warehouse, storage-location, SKU, shipment, receive, export, move, reserve, and release-reservation endpoints; viewer requests are read-only, operators can run shipment/stock workflows, and managers/admins can perform setup writes.
@@ -231,7 +239,7 @@ docs/requirements-sprints.md
 
 Remaining sprint order:
 
-1. Deployment smoke checklist.
+All currently planned requirement sprints are complete.
 
 ## How Josh Can See Progress
 

@@ -19,6 +19,7 @@
     "test": "react-scripts test",
     "test:e2e": "playwright test",
     "test:e2e:install": "playwright install --with-deps chromium",
+    "smoke:deployment": "node scripts/deployment-smoke-check.js",
     "eject": "react-scripts eject",
     "lint": "eslint src",
     "heroku-postbuild": "npm install --prefix backend"
