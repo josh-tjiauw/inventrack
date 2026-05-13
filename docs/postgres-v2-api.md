@@ -29,6 +29,41 @@ $env:DATABASE_URL = 'postgresql://postgres:postgres@localhost:5432/inventrack_pr
 
 ## Endpoints
 
+## Demo auth, RBAC, and tenant guardrails
+
+PostgreSQL v2 routes include a pragmatic portfolio auth layer designed to be safe for demos without adding a full identity provider yet.
+
+Default local/demo behavior:
+
+- If `DEMO_AUTH_REQUIRED` is not `true`, requests default to an `admin` demo role so the portfolio app remains easy to run locally.
+- Tests and smoke checks can pass `X-Demo-Role: viewer|operator|manager|admin` to exercise RBAC behavior.
+- Passing `X-Company-Id: <id>` or setting `DEMO_COMPANY_ID=<id>` scopes reads to that company when no `companyId` query is supplied and blocks explicit cross-company requests.
+
+Strict demo boundary:
+
+```text
+DEMO_AUTH_REQUIRED=true
+DEMO_ADMIN_TOKEN=replace-with-secret
+DEMO_MANAGER_TOKEN=replace-with-secret
+DEMO_OPERATOR_TOKEN=replace-with-secret
+DEMO_VIEWER_TOKEN=replace-with-secret
+DEMO_COMPANY_ID=1
+```
+
+When strict mode is enabled, clients must send one configured bearer token:
+
+```text
+Authorization: Bearer <DEMO_ADMIN_TOKEN>
+```
+
+Mutation RBAC:
+
+- `admin` / `manager`: warehouse, location, SKU, shipment, and stock workflow writes.
+- `operator`: shipment and stock workflow writes.
+- `viewer`: read-only; write requests return `403 FORBIDDEN_ROLE`.
+
+This is intentionally demo-scoped rather than production SSO/OIDC. The guardrails make the enterprise security story explicit while keeping the portfolio deployment simple.
+
 ## Request IDs and audit behavior
 
 Every backend request receives a request ID. Clients may pass one with the `X-Request-Id` header; otherwise the API generates a `req_*` ID. The same value is returned in the `X-Request-Id` response header, included in structured error bodies as `requestId`, and written to request logs.

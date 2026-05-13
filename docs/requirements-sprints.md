@@ -154,7 +154,7 @@ This document converts the enterprise redesign requirements into small implement
 
 ## Sprint 8 — Auth/RBAC and Tenant Isolation
 
-**Status:** Ready
+**Status:** Done
 
 **Requirement:** Address the enterprise security requirements.
 
@@ -169,6 +169,8 @@ This document converts the enterprise redesign requirements into small implement
 - Smoke tests for read/write behavior.
 
 **Done when:** Enterprise security story is implemented or cleanly demo-scoped with guardrails.
+
+**Completed 2026-05-13:** Added demo-scoped auth middleware for PostgreSQL v2 routes with optional strict bearer-token mode, role parsing (`viewer`, `operator`, `manager`, `admin`), mutation RBAC, and `X-Company-Id`/`DEMO_COMPANY_ID` tenant guardrails that auto-scope reads and block explicit cross-company requests. Protected all PostgreSQL v2 mutation endpoints by role and documented local demo vs strict deployment behavior in `docs/postgres-v2-api.md`. Added backend tests for forbidden viewer writes, allowed operator writes reaching validation, and tenant-scope violations. Verified with `npm run build` and `cd backend && npm run test:postgres`; local PostgreSQL-backed cases were skipped because `DATABASE_URL`/`POSTGRES_URL` was not configured, while non-DB auth/validation tests passed.
 
 ## Sprint 9 — Deployment Smoke Checklist
 

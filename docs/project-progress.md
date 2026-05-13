@@ -8,6 +8,16 @@ Inventrack is being rebuilt from a MongoDB prototype into a PostgreSQL-backed, e
 
 ## 2026-05-13 Sprint Update
 
+- Completed Sprint 8 — Auth/RBAC and Tenant Isolation.
+- Added a pragmatic PostgreSQL v2 demo auth middleware with local-friendly default admin behavior, optional strict bearer-token mode, `X-Demo-Role` role simulation, and `X-Company-Id` / `DEMO_COMPANY_ID` tenant scoping.
+- Enforced mutation RBAC across warehouse, storage-location, SKU, shipment, receive, export, move, reserve, and release-reservation endpoints; viewer requests are read-only, operators can run shipment/stock workflows, and managers/admins can perform setup writes.
+- Documented the demo-safe auth boundary, strict-mode environment variables, bearer-token behavior, mutation role matrix, and tenant guardrails in `docs/postgres-v2-api.md`.
+- Added backend tests for forbidden viewer mutation requests, operator mutation access reaching validation, and cross-company tenant-scope blocking.
+- Checks: `npm run build` passed. `cd backend && npm run test:postgres` passed the non-DB validation/auth tests; PostgreSQL-backed cases were skipped locally because neither `DATABASE_URL` nor `POSTGRES_URL` was configured in this worker environment.
+- Blockers: local PostgreSQL execution was unavailable in this worker; CI/local environments with a PostgreSQL URL should execute the full suite. Sprint 9 remains next.
+
+## 2026-05-13 Sprint Update
+
 - Completed Sprint 7 — Request IDs, Logging, and Audit Writes.
 - Added request context middleware that accepts caller-provided `X-Request-Id` values or generates `req_*` IDs, returns them in response headers, includes them in health/error JSON, and logs structured completion records with method, path, status, duration, and request ID.
 - Added `database/migrations/004_audit_request_ids.sql` and wired CI migration loading so `audit_logs` can store indexed `request_id` values.
@@ -194,7 +204,7 @@ Josh approved direct updates to `main` for Inventrack progress. Clawie should st
 
 ## Current Status
 
-The backend is deployed on Render and connected to Neon PostgreSQL. The frontend dashboard, Warehouse Location Map, Inventory Explorer, SKU Catalog page, Shipment Board page, Stock Movement History page, Receive Shipment workflow, Export Shipment workflow, Move Stock workflow, and System Status page consume PostgreSQL `/api/v2` endpoints for warehouses, storage locations, SKUs, inventory, shipments, stock movements, health, rule-based storage recommendations, and transaction-safe manual/shipment-backed receive/export/move plus reservation writes. Mutating PostgreSQL v2 operations now include request-ID traceability and durable audit log writes.
+The backend is deployed on Render and connected to Neon PostgreSQL. The frontend dashboard, Warehouse Location Map, Inventory Explorer, SKU Catalog page, Shipment Board page, Stock Movement History page, Receive Shipment workflow, Export Shipment workflow, Move Stock workflow, and System Status page consume PostgreSQL `/api/v2` endpoints for warehouses, storage locations, SKUs, inventory, shipments, stock movements, health, rule-based storage recommendations, and transaction-safe manual/shipment-backed receive/export/move plus reservation writes. Mutating PostgreSQL v2 operations now include request-ID traceability, durable audit log writes, demo-scoped RBAC, and tenant guardrails.
 
 The project has started the real PostgreSQL migration.
 
@@ -221,8 +231,7 @@ docs/requirements-sprints.md
 
 Remaining sprint order:
 
-1. Auth/RBAC and tenant isolation.
-2. Deployment smoke checklist.
+1. Deployment smoke checklist.
 
 ## How Josh Can See Progress
 

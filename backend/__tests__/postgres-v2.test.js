@@ -48,6 +48,62 @@ describe('PostgreSQL v2 request validation and error shape', () => {
   });
 });
 
+describe('PostgreSQL v2 demo auth and tenant guardrails', () => {
+  const originalDemoCompanyId = process.env.DEMO_COMPANY_ID;
+
+  afterEach(() => {
+    if (originalDemoCompanyId === undefined) {
+      delete process.env.DEMO_COMPANY_ID;
+    } else {
+      process.env.DEMO_COMPANY_ID = originalDemoCompanyId;
+    }
+  });
+
+  it('forbids viewer-role mutation requests before database work', async () => {
+    const res = await request(app)
+      .post('/api/v2/receive-stock')
+      .set('X-Demo-Role', 'viewer')
+      .send({ skuId: 1, locationId: 1, quantity: 1 });
+
+    expect(res.statusCode).toBe(403);
+    expect(res.body).toHaveProperty('success', false);
+    expect(res.body.error).toMatchObject({
+      code: 'FORBIDDEN_ROLE'
+    });
+  });
+
+  it('allows operator-role stock mutations to reach request validation', async () => {
+    const res = await request(app)
+      .post('/api/v2/receive-stock')
+      .set('X-Demo-Role', 'operator')
+      .send({ skuId: 'not-a-number', locationId: 1, quantity: 1 });
+
+    expect(res.statusCode).toBe(400);
+    expect(res.body.error).toMatchObject({
+      code: 'VALIDATION_ERROR'
+    });
+  });
+
+  it('blocks company-scoped requests outside the authorized tenant', async () => {
+    process.env.DEMO_COMPANY_ID = '1';
+
+    const res = await request(app)
+      .post('/api/v2/shipments')
+      .set('X-Demo-Role', 'manager')
+      .send({
+        companyId: 2,
+        shipmentNumber: 'TENANT-BLOCKED',
+        shipmentType: 'inbound',
+        lines: [{ skuId: 1, quantity: 1 }]
+      });
+
+    expect(res.statusCode).toBe(403);
+    expect(res.body.error).toMatchObject({
+      code: 'TENANT_SCOPE_VIOLATION'
+    });
+  });
+});
+
 describeIfPostgres('PostgreSQL v2 API', () => {
   afterAll(async () => {
     await closePool();

@@ -4,8 +4,11 @@ const { receiveStock, exportStock, moveStock, reserveStock, releaseReservation }
 const { parsePositiveInt, optionalInt, validateRequestBody, validateLines } = require('../utils/requestValidation');
 const { validationError } = require('../utils/apiErrors');
 const { writeAuditLog } = require('../utils/auditLog');
+const { demoAuth, enforceTenantScope, requireRole } = require('../middleware/demoAuth');
 
 const router = express.Router();
+router.use(demoAuth);
+router.use(enforceTenantScope);
 
 const asyncHandler = (fn) => (req, res, next) => {
   Promise.resolve(fn(req, res, next)).catch(next);
@@ -36,7 +39,7 @@ router.get('/health', asyncHandler(async (req, res) => {
   });
 }));
 
-router.post('/warehouses', asyncHandler(async (req, res) => {
+router.post('/warehouses', requireRole('admin', 'manager'), asyncHandler(async (req, res) => {
   const { companyId, name, address, status } = validateRequestBody(req.body, [
     { key: 'companyId', aliases: ['company_id'], type: 'positiveInt', required: true },
     { key: 'name', type: 'string', required: true },
@@ -65,7 +68,7 @@ router.post('/warehouses', asyncHandler(async (req, res) => {
   res.status(201).json({ success: true, requestId: req.requestId, auditLog, data: created });
 }));
 
-router.post('/storage-locations', asyncHandler(async (req, res) => {
+router.post('/storage-locations', requireRole('admin', 'manager'), asyncHandler(async (req, res) => {
   const { warehouseId, code, name, type, capacityUnits, status } = validateRequestBody(req.body, [
     { key: 'warehouseId', aliases: ['warehouse_id'], type: 'positiveInt', required: true },
     { key: 'code', type: 'string', required: true },
@@ -97,7 +100,7 @@ router.post('/storage-locations', asyncHandler(async (req, res) => {
   res.status(201).json({ success: true, requestId: req.requestId, auditLog, data: created });
 }));
 
-router.post('/skus', asyncHandler(async (req, res) => {
+router.post('/skus', requireRole('admin', 'manager'), asyncHandler(async (req, res) => {
   const { companyId, sku, name, category, description, unitOfMeasure, reorderPoint } = validateRequestBody(req.body, [
     { key: 'companyId', aliases: ['company_id'], type: 'positiveInt', required: true },
     { key: 'sku', type: 'string', required: true },
@@ -445,7 +448,7 @@ router.get('/shipments', asyncHandler(async (req, res) => {
   res.json({ success: true, data: result.rows });
 }));
 
-router.post('/shipments', asyncHandler(async (req, res) => {
+router.post('/shipments', requireRole('admin', 'manager', 'operator'), asyncHandler(async (req, res) => {
   const { companyId, shipmentNumber, shipmentType, status, supplierOrCustomer, expectedDate, createdByUserId } = validateRequestBody(req.body, [
     { key: 'companyId', aliases: ['company_id'], type: 'positiveInt', required: true },
     { key: 'shipmentNumber', aliases: ['shipment_number'], type: 'string', required: true },
@@ -507,7 +510,7 @@ router.post('/shipments', asyncHandler(async (req, res) => {
   res.status(201).json({ success: true, requestId: req.requestId, auditLog, data });
 }));
 
-router.post('/receive-stock', asyncHandler(async (req, res) => {
+router.post('/receive-stock', requireRole('admin', 'manager', 'operator'), asyncHandler(async (req, res) => {
   const { skuId, locationId, quantity, performedByUserId, lotNumber, supplier, notes, expirationDate, shipmentLineId } = validateRequestBody(req.body, [
     { key: 'skuId', aliases: ['sku_id'], type: 'positiveInt', required: true },
     { key: 'locationId', aliases: ['location_id'], type: 'positiveInt', required: true },
@@ -536,7 +539,7 @@ router.post('/receive-stock', asyncHandler(async (req, res) => {
   res.status(201).json({ success: true, requestId: req.requestId, auditLog: result.auditLog, data: result });
 }));
 
-router.post('/export-stock', asyncHandler(async (req, res) => {
+router.post('/export-stock', requireRole('admin', 'manager', 'operator'), asyncHandler(async (req, res) => {
   const { skuId, quantity, performedByUserId, destination, notes, shipmentLineId } = validateRequestBody(req.body, [
     { key: 'skuId', aliases: ['sku_id'], type: 'positiveInt', required: true },
     { key: 'quantity', type: 'positiveInt', required: true },
@@ -559,7 +562,7 @@ router.post('/export-stock', asyncHandler(async (req, res) => {
   res.status(201).json({ success: true, requestId: req.requestId, auditLog: result.auditLog, data: result });
 }));
 
-router.post('/move-stock', asyncHandler(async (req, res) => {
+router.post('/move-stock', requireRole('admin', 'manager', 'operator'), asyncHandler(async (req, res) => {
   const { inventoryLotId, destinationLocationId, quantity, performedByUserId, notes } = validateRequestBody(req.body, [
     { key: 'inventoryLotId', aliases: ['inventory_lot_id'], type: 'positiveInt', required: true },
     { key: 'destinationLocationId', aliases: ['destination_location_id', 'toLocationId'], type: 'positiveInt', required: true },
@@ -580,7 +583,7 @@ router.post('/move-stock', asyncHandler(async (req, res) => {
   res.status(201).json({ success: true, requestId: req.requestId, auditLog: result.auditLog, data: result });
 }));
 
-router.post('/reserve-stock', asyncHandler(async (req, res) => {
+router.post('/reserve-stock', requireRole('admin', 'manager', 'operator'), asyncHandler(async (req, res) => {
   const { inventoryLotId, quantity, performedByUserId, notes } = validateRequestBody(req.body, [
     { key: 'inventoryLotId', aliases: ['inventory_lot_id'], type: 'positiveInt', required: true },
     { key: 'quantity', type: 'positiveInt', required: true },
@@ -599,7 +602,7 @@ router.post('/reserve-stock', asyncHandler(async (req, res) => {
   res.status(201).json({ success: true, requestId: req.requestId, auditLog: result.auditLog, data: result });
 }));
 
-router.post('/release-reservation', asyncHandler(async (req, res) => {
+router.post('/release-reservation', requireRole('admin', 'manager', 'operator'), asyncHandler(async (req, res) => {
   const { inventoryLotId, quantity, performedByUserId, notes } = validateRequestBody(req.body, [
     { key: 'inventoryLotId', aliases: ['inventory_lot_id'], type: 'positiveInt', required: true },
     { key: 'quantity', type: 'positiveInt', required: true },

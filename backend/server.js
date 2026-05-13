@@ -29,7 +29,7 @@ const app = express();
 const corsOptions = {
   origin: process.env.CORS_ORIGIN || 'http://localhost:3000',
   methods: ['GET', 'POST', 'PUT', 'DELETE'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-Request-Id'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Request-Id', 'X-Demo-Role', 'X-Company-Id'],
   exposedHeaders: ['X-Request-Id']
 };
 app.use(cors(corsOptions));
