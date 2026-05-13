@@ -1,7 +1,7 @@
 const request = require('supertest');
 const { app } = require('../server');
 const { closePool, query } = require('../db/postgres');
-const { receiveStock, exportStock } = require('../services/stockTransactions');
+const { receiveStock, exportStock, moveStock } = require('../services/stockTransactions');
 
 const describeIfPostgres = process.env.DATABASE_URL || process.env.POSTGRES_URL ? describe : describe.skip;
 
@@ -450,5 +450,99 @@ describeIfPostgres('PostgreSQL v2 API', () => {
 
     expect(afterResult.rows[0].quantity_on_hand).toBe(targetLot.quantity_on_hand);
     expect(movementResult.rowCount).toBe(0);
+  });
+
+  it('commits a manual stock move between active locations', async () => {
+    const suffix = Date.now();
+    const lotResult = await query(`
+      INSERT INTO inventory_lots (sku_id, location_id, lot_number, quantity_on_hand, quantity_reserved)
+      VALUES (1, 1, $1, 8, 2)
+      RETURNING id
+    `, [`CI-MOVE-${suffix}`]);
+
+    const res = await request(app)
+      .post('/api/v2/move-stock')
+      .send({
+        inventoryLotId: lotResult.rows[0].id,
+        destinationLocationId: 5,
+        quantity: 3,
+        notes: 'CI move stock success'
+      });
+
+    expect(res.statusCode).toBe(201);
+    expect(res.body).toHaveProperty('success', true);
+    expect(res.body.data.movement).toHaveProperty('movement_type', 'move');
+    expect(res.body.data.movement).toHaveProperty('quantity', 3);
+    expect(res.body.data.sourceLot).toHaveProperty('quantity_on_hand', 5);
+    expect(res.body.data.destinationLot).toHaveProperty('quantity_on_hand', 3);
+    expect(res.body.data.destinationLocation).toHaveProperty('code', 'STAGE-IN-01');
+  });
+
+  it('rejects stock moves when source lot available quantity is insufficient', async () => {
+    const suffix = Date.now();
+    const lotResult = await query(`
+      INSERT INTO inventory_lots (sku_id, location_id, lot_number, quantity_on_hand, quantity_reserved)
+      VALUES (1, 1, $1, 4, 2)
+      RETURNING id
+    `, [`CI-MOVE-SHORT-${suffix}`]);
+
+    await expect(moveStock({
+      inventoryLotId: lotResult.rows[0].id,
+      destinationLocationId: 5,
+      quantity: 3,
+      notes: 'CI move insufficient available'
+    })).rejects.toMatchObject({ status: 409 });
+
+    const unchangedLotResult = await query(
+      'SELECT quantity_on_hand, quantity_reserved FROM inventory_lots WHERE id = $1',
+      [lotResult.rows[0].id]
+    );
+    const movementResult = await query(
+      'SELECT id FROM stock_movements WHERE notes = $1',
+      ['CI move insufficient available']
+    );
+
+    expect(unchangedLotResult.rows[0]).toHaveProperty('quantity_on_hand', 4);
+    expect(unchangedLotResult.rows[0]).toHaveProperty('quantity_reserved', 2);
+    expect(movementResult.rowCount).toBe(0);
+  });
+
+  it('rejects stock moves into inactive or over-capacity destination locations', async () => {
+    const suffix = Date.now();
+    const inactiveLotResult = await query(`
+      INSERT INTO inventory_lots (sku_id, location_id, lot_number, quantity_on_hand, quantity_reserved)
+      VALUES (1, 1, $1, 5, 0)
+      RETURNING id
+    `, [`CI-MOVE-INACTIVE-${suffix}`]);
+    const fullLocationResult = await query(`
+      INSERT INTO storage_locations (warehouse_id, code, name, type, capacity_units, status)
+      VALUES (1, $1, 'CI Move Full Bin', 'bin', 2, 'active')
+      RETURNING id
+    `, [`CI-MOVE-FULL-${suffix}`]);
+    await query(`
+      INSERT INTO inventory_lots (sku_id, location_id, lot_number, quantity_on_hand, quantity_reserved)
+      VALUES (2, $1, $2, 2, 0)
+    `, [fullLocationResult.rows[0].id, `CI-MOVE-FILLER-${suffix}`]);
+
+    await expect(moveStock({
+      inventoryLotId: inactiveLotResult.rows[0].id,
+      destinationLocationId: 7,
+      quantity: 1,
+      notes: 'CI move inactive destination'
+    })).rejects.toMatchObject({ status: 409 });
+
+    await expect(moveStock({
+      inventoryLotId: inactiveLotResult.rows[0].id,
+      destinationLocationId: fullLocationResult.rows[0].id,
+      quantity: 1,
+      notes: 'CI move over capacity'
+    })).rejects.toMatchObject({ status: 409 });
+
+    const sourceLotResult = await query(
+      'SELECT quantity_on_hand FROM inventory_lots WHERE id = $1',
+      [inactiveLotResult.rows[0].id]
+    );
+
+    expect(sourceLotResult.rows[0]).toHaveProperty('quantity_on_hand', 5);
   });
 });

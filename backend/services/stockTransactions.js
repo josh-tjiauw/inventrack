@@ -347,7 +347,166 @@ const exportStock = async ({
   };
 });
 
+const moveStock = async ({
+  inventoryLotId,
+  destinationLocationId,
+  quantity,
+  performedByUserId = null,
+  notes
+}) => withTransaction(async (client) => {
+  const sourceResult = await client.query(`
+    SELECT
+      il.id AS inventory_lot_id,
+      il.sku_id,
+      il.location_id AS source_location_id,
+      il.lot_number,
+      il.expiration_date,
+      il.quantity_on_hand,
+      il.quantity_reserved,
+      (il.quantity_on_hand - il.quantity_reserved)::int AS quantity_available,
+      s.company_id,
+      s.sku,
+      s.name AS sku_name,
+      source_location.code AS source_location_code,
+      source_location.name AS source_location_name,
+      source_warehouse.name AS source_warehouse_name
+    FROM inventory_lots il
+    JOIN skus s ON s.id = il.sku_id
+    JOIN storage_locations source_location ON source_location.id = il.location_id
+    JOIN warehouses source_warehouse ON source_warehouse.id = source_location.warehouse_id
+    WHERE il.id = $1
+    FOR UPDATE OF il
+  `, [inventoryLotId]);
+
+  if (sourceResult.rowCount === 0) {
+    throw badRequest('inventoryLotId does not exist');
+  }
+
+  const source = sourceResult.rows[0];
+  if (Number(source.source_location_id) === Number(destinationLocationId)) {
+    throw conflict('Destination location must be different from the source location');
+  }
+
+  if (Number(source.quantity_available || 0) < quantity) {
+    throw conflict(`Only ${source.quantity_available} units are available to move from this lot`);
+  }
+
+  const destinationResult = await client.query(`
+    SELECT
+      sl.id AS destination_location_id,
+      sl.code AS destination_location_code,
+      sl.name AS destination_location_name,
+      sl.status AS destination_location_status,
+      sl.capacity_units,
+      w.id AS destination_warehouse_id,
+      w.name AS destination_warehouse_name,
+      w.company_id
+    FROM storage_locations sl
+    JOIN warehouses w ON w.id = sl.warehouse_id
+    WHERE sl.id = $1
+    FOR UPDATE OF sl
+  `, [destinationLocationId]);
+
+  if (destinationResult.rowCount === 0) {
+    throw badRequest('destinationLocationId does not exist');
+  }
+
+  const destination = destinationResult.rows[0];
+  if (Number(destination.company_id) !== Number(source.company_id)) {
+    throw badRequest('Destination location must belong to the same company as the SKU');
+  }
+
+  if (destination.destination_location_status !== 'active') {
+    throw conflict(`Location ${destination.destination_location_code} is not active`);
+  }
+
+  const destinationQuantityResult = await client.query(`
+    SELECT COALESCE(SUM(quantity_on_hand), 0)::int AS destination_quantity_on_hand
+    FROM inventory_lots
+    WHERE location_id = $1
+  `, [destinationLocationId]);
+
+  const destinationQuantityBefore = Number(destinationQuantityResult.rows[0].destination_quantity_on_hand || 0);
+  const destinationQuantityAfter = destinationQuantityBefore + quantity;
+  if (destinationQuantityAfter > Number(destination.capacity_units || 0)) {
+    throw conflict(`Moving ${quantity} units would exceed destination location capacity`);
+  }
+
+  const destinationLotResult = await client.query(`
+    UPDATE inventory_lots
+    SET quantity_on_hand = quantity_on_hand + $1,
+        expiration_date = COALESCE(expiration_date, $5),
+        updated_at = NOW()
+    WHERE sku_id = $2
+      AND location_id = $3
+      AND lot_number IS NOT DISTINCT FROM $4
+    RETURNING id, sku_id, location_id, lot_number, quantity_on_hand, quantity_reserved, expiration_date
+  `, [quantity, source.sku_id, destinationLocationId, source.lot_number, source.expiration_date]);
+
+  let destinationLot = destinationLotResult.rows[0];
+  if (!destinationLot) {
+    const insertedDestinationLotResult = await client.query(`
+      INSERT INTO inventory_lots (sku_id, location_id, lot_number, quantity_on_hand, quantity_reserved, expiration_date)
+      VALUES ($1, $2, $3, $4, 0, $5)
+      RETURNING id, sku_id, location_id, lot_number, quantity_on_hand, quantity_reserved, expiration_date
+    `, [source.sku_id, destinationLocationId, source.lot_number, quantity, source.expiration_date]);
+    destinationLot = insertedDestinationLotResult.rows[0];
+  }
+
+  const sourceLotResult = await client.query(`
+    UPDATE inventory_lots
+    SET quantity_on_hand = quantity_on_hand - $1,
+        updated_at = NOW()
+    WHERE id = $2
+    RETURNING id, sku_id, location_id, lot_number, quantity_on_hand, quantity_reserved, expiration_date
+  `, [quantity, inventoryLotId]);
+
+  const movementResult = await client.query(`
+    INSERT INTO stock_movements (
+      company_id, sku_id, from_location_id, to_location_id, quantity,
+      movement_type, reference_type, reference_id, performed_by_user_id, notes
+    )
+    VALUES ($1, $2, $3, $4, $5, 'move', 'inventory_lot', $6, $7, $8)
+    RETURNING id, company_id, sku_id, from_location_id, to_location_id, quantity, movement_type, reference_type, reference_id, notes, created_at
+  `, [
+    source.company_id,
+    source.sku_id,
+    source.source_location_id,
+    destinationLocationId,
+    quantity,
+    inventoryLotId,
+    performedByUserId,
+    notes
+  ]);
+
+  return {
+    sku: {
+      skuId: source.sku_id,
+      sku: source.sku,
+      name: source.sku_name
+    },
+    sourceLocation: {
+      locationId: source.source_location_id,
+      code: source.source_location_code,
+      name: source.source_location_name,
+      warehouseName: source.source_warehouse_name
+    },
+    destinationLocation: {
+      locationId: destination.destination_location_id,
+      code: destination.destination_location_code,
+      name: destination.destination_location_name,
+      warehouseName: destination.destination_warehouse_name,
+      quantityOnHandAfterMove: destinationQuantityAfter,
+      capacityUnits: destination.capacity_units
+    },
+    sourceLot: sourceLotResult.rows[0],
+    destinationLot,
+    movement: movementResult.rows[0]
+  };
+});
+
 module.exports = {
   receiveStock,
-  exportStock
+  exportStock,
+  moveStock
 };

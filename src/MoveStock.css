@@ -1,0 +1,27 @@
+.move-stock-message {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 1rem 0;
+  padding: 1rem;
+  border-radius: 12px;
+  background: #ecfdf5;
+  color: #065f46;
+  border: 1px solid #a7f3d0;
+}
+
+.move-stock-button {
+  align-self: end;
+  border: none;
+  border-radius: 10px;
+  padding: 0.8rem 1.2rem;
+  background: #2563eb;
+  color: white;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.move-stock-button:disabled {
+  background: #94a3b8;
+  cursor: not-allowed;
+}

@@ -1,6 +1,6 @@
 const express = require('express');
 const { query, withTransaction, pingPostgres } = require('../db/postgres');
-const { receiveStock, exportStock } = require('../services/stockTransactions');
+const { receiveStock, exportStock, moveStock } = require('../services/stockTransactions');
 
 const router = express.Router();
 
@@ -554,6 +554,24 @@ router.post('/export-stock', asyncHandler(async (req, res) => {
     destination,
     notes,
     shipmentLineId
+  });
+
+  res.status(201).json({ success: true, data: result });
+}));
+
+router.post('/move-stock', asyncHandler(async (req, res) => {
+  const inventoryLotId = positiveIntOrThrow(req.body.inventoryLotId || req.body.inventory_lot_id, 'inventoryLotId');
+  const destinationLocationId = positiveIntOrThrow(req.body.destinationLocationId || req.body.toLocationId || req.body.destination_location_id, 'destinationLocationId');
+  const quantity = positiveIntOrThrow(req.body.quantity, 'quantity');
+  const performedByUserId = optionalInt(req.body.performedByUserId || req.body.userId) || null;
+  const notes = String(req.body.notes || 'Manual stock move').trim();
+
+  const result = await moveStock({
+    inventoryLotId,
+    destinationLocationId,
+    quantity,
+    performedByUserId,
+    notes
   });
 
   res.status(201).json({ success: true, data: result });

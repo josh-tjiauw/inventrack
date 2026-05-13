@@ -11,6 +11,7 @@ import MovementHistory from './MovementHistory';
 import SystemStatus from './SystemStatus';
 import ShipmentReceiver from './ShipmentReceiver';
 import ExportShipment from './ExportShipment';
+import MoveStock from './MoveStock';
 import Navbar from './Navbar';
 import './styles.css';
 
@@ -32,6 +33,7 @@ function App() {
             <Route path="/status" element={<SystemStatus />} />
             <Route path="/receive" element={<ShipmentReceiver />} />
             <Route path="/export" element={<ExportShipment />} /> {/* New route */}
+            <Route path="/move" element={<MoveStock />} />
           </Routes>
         </main>
       </div>

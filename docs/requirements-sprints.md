@@ -75,7 +75,7 @@ This document converts the enterprise redesign requirements into small implement
 
 ## Sprint 4 — Move Stock Workflow
 
-**Status:** Ready
+**Status:** Done
 
 **Requirement:** Implement the enterprise API contract's move-stock operation.
 
@@ -92,6 +92,8 @@ This document converts the enterprise redesign requirements into small implement
 - `npm run build` if frontend changes are included.
 
 **Done when:** Users can move stock between locations and movement history reflects it.
+
+**Completed 2026-05-13:** Added transaction-safe `moveStock` service logic and `POST /api/v2/move-stock`. The service locks the source inventory lot with `FOR UPDATE`, rejects insufficient available quantity, validates same-company active destination locations and capacity, upserts the destination lot, decrements the source lot, and writes a `stock_movements` audit row with `movement_type = 'move'`. Added PostgreSQL test coverage for move success, insufficient available quantity rollback, inactive destination conflict, and over-capacity destination conflict. Added a `/move` frontend workflow and navbar entry so users can select an available source lot, choose a destination with enough open capacity, and commit the move. Verified with `npm run build`; `cd backend && npm run test:postgres` syntax-loaded the suite but skipped local PostgreSQL execution because `DATABASE_URL`/`POSTGRES_URL` was not configured.
 
 ## Sprint 5 — Reserve and Release Reservation Workflows
 
