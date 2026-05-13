@@ -8,6 +8,15 @@ Inventrack is being rebuilt from a MongoDB prototype into a PostgreSQL-backed, e
 
 ## 2026-05-13 Sprint Update
 
+- Completed Sprint 3 — Playwright Critical Workflow Tests.
+- Added Playwright Chromium E2E coverage for the portfolio-critical demo flow: create inbound shipment, receive against the created shipment line, export against an outbound shipment line, and verify receive/export movement history.
+- Added deterministic `/api/v2/**` route mocks so the browser workflow check can run locally and in CI without a PostgreSQL database; backend transaction semantics remain covered by the PostgreSQL Jest suite.
+- Added `playwright.config.js`, `tests/e2e/critical-workflow.spec.js`, `docs/playwright-e2e.md`, `npm run test:e2e`, `npm run test:e2e:install`, and a GitHub Actions `playwright-critical-workflow` job.
+- Checks: `npm run build` passed. `npm run test:e2e` passed. `cd backend && npm run test:postgres` was skipped locally because neither `DATABASE_URL` nor `POSTGRES_URL` was configured in this worker environment.
+- Blockers: none for Sprint 3; Sprint 4 remains next.
+
+## 2026-05-13 Sprint Update
+
 - Completed Sprint 2 — Stock Transaction Service Tests.
 - Added direct `backend/services/stockTransactions.js` coverage to the PostgreSQL v2 Jest suite for over-receive, over-export, receive rollback after movement insertion failure, and export rollback after inventory lot updates.
 - Existing PostgreSQL v2 tests continue to cover insufficient location capacity and insufficient available stock conflicts.
@@ -167,13 +176,12 @@ docs/requirements-sprints.md
 
 Remaining sprint order:
 
-1. Playwright critical workflow tests.
-2. Move stock workflow.
-3. Reserve/release reservation workflows.
-4. Request validation and error shape.
-5. Request IDs, logging, and audit writes.
-6. Auth/RBAC and tenant isolation.
-7. Deployment smoke checklist.
+1. Move stock workflow.
+2. Reserve/release reservation workflows.
+3. Request validation and error shape.
+4. Request IDs, logging, and audit writes.
+5. Auth/RBAC and tenant isolation.
+6. Deployment smoke checklist.
 
 ## How Josh Can See Progress
 

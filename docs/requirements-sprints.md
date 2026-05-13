@@ -56,7 +56,7 @@ This document converts the enterprise redesign requirements into small implement
 
 ## Sprint 3 — Playwright Critical Workflow Tests
 
-**Status:** Ready
+**Status:** Done
 
 **Requirement:** Add end-to-end confidence for the portfolio demo flow.
 
@@ -70,6 +70,8 @@ This document converts the enterprise redesign requirements into small implement
 - `npm run build`
 
 **Done when:** A real browser test validates the core inventory workflow.
+
+**Completed 2026-05-13:** Added Playwright Chromium coverage for the portfolio-critical flow: create inbound shipment, receive against the created shipment line, export against an outbound shipment line, and verify receive/export movement history. The test uses deterministic `/api/v2/**` route mocks so it can run without a local PostgreSQL database while the backend PostgreSQL suite remains responsible for transaction behavior. Added `npm run test:e2e`, `npm run test:e2e:install`, `playwright.config.js`, `docs/playwright-e2e.md`, and a GitHub Actions `playwright-critical-workflow` job. Verified with `npm run build` and `npm run test:e2e`; local PostgreSQL tests were skipped because `DATABASE_URL`/`POSTGRES_URL` was not configured.
 
 ## Sprint 4 — Move Stock Workflow
 
