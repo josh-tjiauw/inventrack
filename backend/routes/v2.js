@@ -1,6 +1,6 @@
 const express = require('express');
 const { query, withTransaction, pingPostgres } = require('../db/postgres');
-const { receiveStock, exportStock, moveStock } = require('../services/stockTransactions');
+const { receiveStock, exportStock, moveStock, reserveStock, releaseReservation } = require('../services/stockTransactions');
 
 const router = express.Router();
 
@@ -569,6 +569,38 @@ router.post('/move-stock', asyncHandler(async (req, res) => {
   const result = await moveStock({
     inventoryLotId,
     destinationLocationId,
+    quantity,
+    performedByUserId,
+    notes
+  });
+
+  res.status(201).json({ success: true, data: result });
+}));
+
+router.post('/reserve-stock', asyncHandler(async (req, res) => {
+  const inventoryLotId = positiveIntOrThrow(req.body.inventoryLotId || req.body.inventory_lot_id, 'inventoryLotId');
+  const quantity = positiveIntOrThrow(req.body.quantity, 'quantity');
+  const performedByUserId = optionalInt(req.body.performedByUserId || req.body.userId) || null;
+  const notes = String(req.body.notes || 'Manual stock reservation').trim();
+
+  const result = await reserveStock({
+    inventoryLotId,
+    quantity,
+    performedByUserId,
+    notes
+  });
+
+  res.status(201).json({ success: true, data: result });
+}));
+
+router.post('/release-reservation', asyncHandler(async (req, res) => {
+  const inventoryLotId = positiveIntOrThrow(req.body.inventoryLotId || req.body.inventory_lot_id, 'inventoryLotId');
+  const quantity = positiveIntOrThrow(req.body.quantity, 'quantity');
+  const performedByUserId = optionalInt(req.body.performedByUserId || req.body.userId) || null;
+  const notes = String(req.body.notes || 'Manual reservation release').trim();
+
+  const result = await releaseReservation({
+    inventoryLotId,
     quantity,
     performedByUserId,
     notes

@@ -505,8 +505,171 @@ const moveStock = async ({
   };
 });
 
+const reserveStock = async ({
+  inventoryLotId,
+  quantity,
+  performedByUserId = null,
+  notes
+}) => withTransaction(async (client) => {
+  const lotResult = await client.query(`
+    SELECT
+      il.id AS inventory_lot_id,
+      il.sku_id,
+      il.location_id,
+      il.lot_number,
+      il.quantity_on_hand,
+      il.quantity_reserved,
+      (il.quantity_on_hand - il.quantity_reserved)::int AS quantity_available,
+      s.company_id,
+      s.sku,
+      s.name AS sku_name,
+      sl.code AS location_code,
+      sl.name AS location_name,
+      w.name AS warehouse_name
+    FROM inventory_lots il
+    JOIN skus s ON s.id = il.sku_id
+    JOIN storage_locations sl ON sl.id = il.location_id
+    JOIN warehouses w ON w.id = sl.warehouse_id
+    WHERE il.id = $1
+    FOR UPDATE OF il
+  `, [inventoryLotId]);
+
+  if (lotResult.rowCount === 0) {
+    throw badRequest('inventoryLotId does not exist');
+  }
+
+  const lot = lotResult.rows[0];
+  if (Number(lot.quantity_available || 0) < quantity) {
+    throw conflict(`Only ${lot.quantity_available} units are available to reserve from this lot`);
+  }
+
+  const updatedLotResult = await client.query(`
+    UPDATE inventory_lots
+    SET quantity_reserved = quantity_reserved + $1,
+        updated_at = NOW()
+    WHERE id = $2
+    RETURNING id, sku_id, location_id, lot_number, quantity_on_hand, quantity_reserved, expiration_date
+  `, [quantity, inventoryLotId]);
+
+  const movementResult = await client.query(`
+    INSERT INTO stock_movements (
+      company_id, sku_id, from_location_id, to_location_id, quantity,
+      movement_type, reference_type, reference_id, performed_by_user_id, notes
+    )
+    VALUES ($1, $2, $3, NULL, $4, 'reserve', 'inventory_lot', $5, $6, $7)
+    RETURNING id, company_id, sku_id, from_location_id, to_location_id, quantity, movement_type, reference_type, reference_id, notes, created_at
+  `, [
+    lot.company_id,
+    lot.sku_id,
+    lot.location_id,
+    quantity,
+    inventoryLotId,
+    performedByUserId,
+    notes
+  ]);
+
+  return {
+    sku: {
+      skuId: lot.sku_id,
+      sku: lot.sku,
+      name: lot.sku_name
+    },
+    location: {
+      locationId: lot.location_id,
+      code: lot.location_code,
+      name: lot.location_name,
+      warehouseName: lot.warehouse_name
+    },
+    lot: updatedLotResult.rows[0],
+    reservedQuantity: quantity,
+    movement: movementResult.rows[0]
+  };
+});
+
+const releaseReservation = async ({
+  inventoryLotId,
+  quantity,
+  performedByUserId = null,
+  notes
+}) => withTransaction(async (client) => {
+  const lotResult = await client.query(`
+    SELECT
+      il.id AS inventory_lot_id,
+      il.sku_id,
+      il.location_id,
+      il.lot_number,
+      il.quantity_on_hand,
+      il.quantity_reserved,
+      s.company_id,
+      s.sku,
+      s.name AS sku_name,
+      sl.code AS location_code,
+      sl.name AS location_name,
+      w.name AS warehouse_name
+    FROM inventory_lots il
+    JOIN skus s ON s.id = il.sku_id
+    JOIN storage_locations sl ON sl.id = il.location_id
+    JOIN warehouses w ON w.id = sl.warehouse_id
+    WHERE il.id = $1
+    FOR UPDATE OF il
+  `, [inventoryLotId]);
+
+  if (lotResult.rowCount === 0) {
+    throw badRequest('inventoryLotId does not exist');
+  }
+
+  const lot = lotResult.rows[0];
+  if (Number(lot.quantity_reserved || 0) < quantity) {
+    throw conflict(`Only ${lot.quantity_reserved} units are reserved on this lot`);
+  }
+
+  const updatedLotResult = await client.query(`
+    UPDATE inventory_lots
+    SET quantity_reserved = quantity_reserved - $1,
+        updated_at = NOW()
+    WHERE id = $2
+    RETURNING id, sku_id, location_id, lot_number, quantity_on_hand, quantity_reserved, expiration_date
+  `, [quantity, inventoryLotId]);
+
+  const movementResult = await client.query(`
+    INSERT INTO stock_movements (
+      company_id, sku_id, from_location_id, to_location_id, quantity,
+      movement_type, reference_type, reference_id, performed_by_user_id, notes
+    )
+    VALUES ($1, $2, $3, NULL, $4, 'release_reservation', 'inventory_lot', $5, $6, $7)
+    RETURNING id, company_id, sku_id, from_location_id, to_location_id, quantity, movement_type, reference_type, reference_id, notes, created_at
+  `, [
+    lot.company_id,
+    lot.sku_id,
+    lot.location_id,
+    quantity,
+    inventoryLotId,
+    performedByUserId,
+    notes
+  ]);
+
+  return {
+    sku: {
+      skuId: lot.sku_id,
+      sku: lot.sku,
+      name: lot.sku_name
+    },
+    location: {
+      locationId: lot.location_id,
+      code: lot.location_code,
+      name: lot.location_name,
+      warehouseName: lot.warehouse_name
+    },
+    lot: updatedLotResult.rows[0],
+    releasedQuantity: quantity,
+    movement: movementResult.rows[0]
+  };
+});
+
 module.exports = {
   receiveStock,
   exportStock,
-  moveStock
+  moveStock,
+  reserveStock,
+  releaseReservation
 };

@@ -101,6 +101,37 @@ GET /api/v2/stock-movements?limit=25
 
 Uses the `v_stock_movement_history` view.
 
+### Reservation workflows
+
+```text
+POST /api/v2/reserve-stock
+POST /api/v2/release-reservation
+```
+
+Reserve available quantity from a specific inventory lot without changing on-hand quantity:
+
+```json
+{
+  "inventoryLotId": 1,
+  "quantity": 4,
+  "performedByUserId": 2,
+  "notes": "Reserve for outbound order SO-1001"
+}
+```
+
+Release previously reserved quantity from the same lot:
+
+```json
+{
+  "inventoryLotId": 1,
+  "quantity": 2,
+  "performedByUserId": 2,
+  "notes": "Release cancelled order quantity"
+}
+```
+
+Both endpoints lock the inventory lot inside a PostgreSQL transaction, preserve the invariant `quantity_reserved <= quantity_on_hand`, and write `stock_movements` rows with `movement_type = 'reserve'` or `movement_type = 'release_reservation'`.
+
 ### Shipments
 
 ```text

@@ -1,7 +1,7 @@
 const request = require('supertest');
 const { app } = require('../server');
 const { closePool, query } = require('../db/postgres');
-const { receiveStock, exportStock, moveStock } = require('../services/stockTransactions');
+const { receiveStock, exportStock, moveStock, reserveStock, releaseReservation } = require('../services/stockTransactions');
 
 const describeIfPostgres = process.env.DATABASE_URL || process.env.POSTGRES_URL ? describe : describe.skip;
 
@@ -544,5 +544,110 @@ describeIfPostgres('PostgreSQL v2 API', () => {
     );
 
     expect(sourceLotResult.rows[0]).toHaveProperty('quantity_on_hand', 5);
+  });
+
+  it('commits and audits a stock reservation', async () => {
+    const suffix = Date.now();
+    const lotResult = await query(`
+      INSERT INTO inventory_lots (sku_id, location_id, lot_number, quantity_on_hand, quantity_reserved)
+      VALUES (1, 1, $1, 10, 2)
+      RETURNING id
+    `, [`CI-RESERVE-${suffix}`]);
+
+    const res = await request(app)
+      .post('/api/v2/reserve-stock')
+      .send({
+        inventoryLotId: lotResult.rows[0].id,
+        quantity: 4,
+        notes: 'CI reserve success'
+      });
+
+    expect(res.statusCode).toBe(201);
+    expect(res.body).toHaveProperty('success', true);
+    expect(res.body.data).toHaveProperty('reservedQuantity', 4);
+    expect(res.body.data.lot).toHaveProperty('quantity_on_hand', 10);
+    expect(res.body.data.lot).toHaveProperty('quantity_reserved', 6);
+    expect(res.body.data.movement).toHaveProperty('movement_type', 'reserve');
+    expect(res.body.data.movement).toHaveProperty('reference_type', 'inventory_lot');
+  });
+
+  it('rejects reservations when available quantity is insufficient without changing the lot', async () => {
+    const suffix = Date.now();
+    const lotResult = await query(`
+      INSERT INTO inventory_lots (sku_id, location_id, lot_number, quantity_on_hand, quantity_reserved)
+      VALUES (1, 1, $1, 5, 4)
+      RETURNING id
+    `, [`CI-RESERVE-SHORT-${suffix}`]);
+
+    await expect(reserveStock({
+      inventoryLotId: lotResult.rows[0].id,
+      quantity: 2,
+      notes: 'CI reserve insufficient available'
+    })).rejects.toMatchObject({ status: 409 });
+
+    const unchangedLotResult = await query(
+      'SELECT quantity_on_hand, quantity_reserved FROM inventory_lots WHERE id = $1',
+      [lotResult.rows[0].id]
+    );
+    const movementResult = await query(
+      'SELECT id FROM stock_movements WHERE notes = $1',
+      ['CI reserve insufficient available']
+    );
+
+    expect(unchangedLotResult.rows[0]).toHaveProperty('quantity_on_hand', 5);
+    expect(unchangedLotResult.rows[0]).toHaveProperty('quantity_reserved', 4);
+    expect(movementResult.rowCount).toBe(0);
+  });
+
+  it('commits and audits a reservation release', async () => {
+    const suffix = Date.now();
+    const lotResult = await query(`
+      INSERT INTO inventory_lots (sku_id, location_id, lot_number, quantity_on_hand, quantity_reserved)
+      VALUES (1, 1, $1, 9, 5)
+      RETURNING id
+    `, [`CI-RELEASE-${suffix}`]);
+
+    const res = await request(app)
+      .post('/api/v2/release-reservation')
+      .send({
+        inventoryLotId: lotResult.rows[0].id,
+        quantity: 3,
+        notes: 'CI release success'
+      });
+
+    expect(res.statusCode).toBe(201);
+    expect(res.body).toHaveProperty('success', true);
+    expect(res.body.data).toHaveProperty('releasedQuantity', 3);
+    expect(res.body.data.lot).toHaveProperty('quantity_on_hand', 9);
+    expect(res.body.data.lot).toHaveProperty('quantity_reserved', 2);
+    expect(res.body.data.movement).toHaveProperty('movement_type', 'release_reservation');
+  });
+
+  it('rejects reservation releases above reserved quantity without changing the lot', async () => {
+    const suffix = Date.now();
+    const lotResult = await query(`
+      INSERT INTO inventory_lots (sku_id, location_id, lot_number, quantity_on_hand, quantity_reserved)
+      VALUES (1, 1, $1, 7, 2)
+      RETURNING id
+    `, [`CI-RELEASE-OVER-${suffix}`]);
+
+    await expect(releaseReservation({
+      inventoryLotId: lotResult.rows[0].id,
+      quantity: 3,
+      notes: 'CI release over reserved'
+    })).rejects.toMatchObject({ status: 409 });
+
+    const unchangedLotResult = await query(
+      'SELECT quantity_on_hand, quantity_reserved FROM inventory_lots WHERE id = $1',
+      [lotResult.rows[0].id]
+    );
+    const movementResult = await query(
+      'SELECT id FROM stock_movements WHERE notes = $1',
+      ['CI release over reserved']
+    );
+
+    expect(unchangedLotResult.rows[0]).toHaveProperty('quantity_on_hand', 7);
+    expect(unchangedLotResult.rows[0]).toHaveProperty('quantity_reserved', 2);
+    expect(movementResult.rowCount).toBe(0);
   });
 });

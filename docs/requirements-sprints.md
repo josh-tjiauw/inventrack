@@ -97,7 +97,7 @@ This document converts the enterprise redesign requirements into small implement
 
 ## Sprint 5 — Reserve and Release Reservation Workflows
 
-**Status:** Ready
+**Status:** Done
 
 **Requirement:** Implement reservation logic from the enterprise API contract.
 
@@ -112,6 +112,8 @@ This document converts the enterprise redesign requirements into small implement
 - Backend tests for reserve success, insufficient available quantity, release success, and release exceeding reserved quantity.
 
 **Done when:** Reservations can be created/released transactionally and audited in movement history.
+
+**Completed 2026-05-13:** Added transaction-safe `reserveStock` and `releaseReservation` service logic plus `POST /api/v2/reserve-stock` and `POST /api/v2/release-reservation`. Both workflows lock the inventory lot with `FOR UPDATE`, preserve `quantity_reserved <= quantity_on_hand`, update reserved quantity without changing on-hand quantity, and write audited `stock_movements` rows with `movement_type = 'reserve'` or `movement_type = 'release_reservation'`. Added PostgreSQL test coverage for reserve success, insufficient available quantity, release success, and release exceeding reserved quantity. Added documented API examples in `docs/postgres-v2-api.md`. Verified with `npm run build`; `cd backend && npm run test:postgres` syntax-loaded the suite but skipped local PostgreSQL execution because `DATABASE_URL`/`POSTGRES_URL` was not configured.
 
 ## Sprint 6 — Request Validation and Error Shape
 

@@ -8,6 +8,16 @@ Inventrack is being rebuilt from a MongoDB prototype into a PostgreSQL-backed, e
 
 ## 2026-05-13 Sprint Update
 
+- Completed Sprint 5 — Reserve and Release Reservation Workflows.
+- Added transaction-safe `reserveStock` and `releaseReservation` service logic plus `POST /api/v2/reserve-stock` and `POST /api/v2/release-reservation`.
+- Reservation workflows lock the inventory lot with `FOR UPDATE`, enforce available/reserved quantity limits, update `quantity_reserved` without changing `quantity_on_hand`, and write `stock_movements` rows with `movement_type = 'reserve'` or `movement_type = 'release_reservation'`.
+- Added PostgreSQL test coverage for reserve success, insufficient available quantity rollback, release success, and release exceeding reserved quantity rollback.
+- Added documented API examples in `docs/postgres-v2-api.md` for portfolio/demo usage.
+- Checks: `npm run build` passed. `cd backend && npm run test:postgres` completed with the suite syntax-loaded but skipped locally because neither `DATABASE_URL` nor `POSTGRES_URL` was configured in this worker environment.
+- Blockers: local PostgreSQL execution was unavailable in this worker; CI/local environments with a PostgreSQL URL should execute the full suite. Sprint 6 remains next.
+
+## 2026-05-13 Sprint Update
+
 - Completed Sprint 4 — Move Stock Workflow.
 - Added transaction-safe `moveStock` service logic and `POST /api/v2/move-stock` for moving inventory between locations.
 - Move-stock locks the source lot with `FOR UPDATE`, enforces available quantity, validates same-company active destination locations and capacity, upserts destination lots, decrements source lots, and writes `stock_movements` rows with `movement_type = 'move'`.
@@ -116,11 +126,13 @@ Josh approved direct updates to `main` for Inventrack progress. Clawie should st
   - `POST /api/v2/receive-stock`
   - `POST /api/v2/export-stock`
   - `POST /api/v2/move-stock`
+  - `POST /api/v2/reserve-stock`
+  - `POST /api/v2/release-reservation`
 - PostgreSQL v2 integration tests added:
   - `backend/__tests__/postgres-v2.test.js`
 - Backend PostgreSQL test script added:
   - `npm run test:postgres` from `backend/` runs the v2 test file directly and is wired into CI with a disposable PostgreSQL service.
-- PostgreSQL v2 tests now cover warehouse, storage location, SKU, and shipment-with-lines create endpoints plus manual receive/export success paths, shipment-backed receive/export success paths, and insufficient-capacity/insufficient-stock conflict paths against disposable CI data.
+- PostgreSQL v2 tests now cover warehouse, storage location, SKU, and shipment-with-lines create endpoints plus manual receive/export success paths, shipment-backed receive/export success paths, move/reserve/release-reservation workflows, and insufficient-capacity/insufficient-stock/reservation conflict paths against disposable CI data.
 
 ### Frontend implementation
 
@@ -136,6 +148,7 @@ Josh approved direct updates to `main` for Inventrack progress. Clawie should st
 - `/receive` has been converted from the legacy MongoDB shelf/AI flow into a PostgreSQL v2 Receive Shipment workflow. It reads `/api/v2/skus`, `/api/v2/storage-locations`, and `/api/v2/storage-recommendations`, ranks active locations by available capacity/projected utilization, and can now commit manual or shipment-line receipts through transactional `POST /api/v2/receive-stock`.
 - `/export` has been converted from the legacy MongoDB shelf flow into a PostgreSQL v2 Export Shipment workflow. It reads `/api/v2/inventory` and `/api/v2/skus`, generates a FEFO-style pick plan from available lots, shows requested/planned/shortage totals, and can now commit manual or shipment-line exports through transactional `POST /api/v2/export-stock`.
 - New `/move` Move Stock workflow added. It reads `/api/v2/inventory` and `/api/v2/storage-locations`, lets users select an available source lot and active destination location with enough open capacity, and commits transaction-safe moves through `POST /api/v2/move-stock`.
+- Reservation API examples are documented in `docs/postgres-v2-api.md`; `POST /api/v2/reserve-stock` and `POST /api/v2/release-reservation` update inventory lot reservations transactionally and audit the changes in stock movements.
 
 ### Deployment prep
 
@@ -161,7 +174,7 @@ Josh approved direct updates to `main` for Inventrack progress. Clawie should st
 
 ## Current Status
 
-The backend is deployed on Render and connected to Neon PostgreSQL. The frontend dashboard, Warehouse Location Map, Inventory Explorer, SKU Catalog page, Shipment Board page, Stock Movement History page, Receive Shipment workflow, Export Shipment workflow, Move Stock workflow, and System Status page consume PostgreSQL `/api/v2` endpoints for warehouses, storage locations, SKUs, inventory, shipments, stock movements, health, rule-based storage recommendations, and transaction-safe manual/shipment-backed receive/export/move writes.
+The backend is deployed on Render and connected to Neon PostgreSQL. The frontend dashboard, Warehouse Location Map, Inventory Explorer, SKU Catalog page, Shipment Board page, Stock Movement History page, Receive Shipment workflow, Export Shipment workflow, Move Stock workflow, and System Status page consume PostgreSQL `/api/v2` endpoints for warehouses, storage locations, SKUs, inventory, shipments, stock movements, health, rule-based storage recommendations, and transaction-safe manual/shipment-backed receive/export/move plus reservation writes.
 
 The project has started the real PostgreSQL migration.
 
@@ -188,11 +201,10 @@ docs/requirements-sprints.md
 
 Remaining sprint order:
 
-1. Reserve/release reservation workflows.
-2. Request validation and error shape.
-3. Request IDs, logging, and audit writes.
-4. Auth/RBAC and tenant isolation.
-5. Deployment smoke checklist.
+1. Request validation and error shape.
+2. Request IDs, logging, and audit writes.
+3. Auth/RBAC and tenant isolation.
+4. Deployment smoke checklist.
 
 ## How Josh Can See Progress
 
@@ -246,4 +258,6 @@ POST /api/v2/shipments
 POST /api/v2/receive-stock
 POST /api/v2/export-stock
 POST /api/v2/move-stock
+POST /api/v2/reserve-stock
+POST /api/v2/release-reservation
 ```
