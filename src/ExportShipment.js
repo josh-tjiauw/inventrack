@@ -6,6 +6,8 @@ import './Dashboard.css';
 const formatNumber = (value) => Number(value || 0).toLocaleString();
 const formatDate = (value) => value ? new Date(value).toLocaleDateString() : 'No expiration';
 
+const getLineRemaining = (line) => Math.max(0, Number(line.quantity || 0) - Number(line.exportedQuantity || 0));
+
 const sortLotsForPicking = (a, b) => {
   const aExpiration = a.expiration_date ? new Date(a.expiration_date).getTime() : Number.MAX_SAFE_INTEGER;
   const bExpiration = b.expiration_date ? new Date(b.expiration_date).getTime() : Number.MAX_SAFE_INTEGER;
@@ -15,6 +17,9 @@ const sortLotsForPicking = (a, b) => {
 const ExportShipment = () => {
   const [inventory, setInventory] = useState([]);
   const [skus, setSkus] = useState([]);
+  const [shipments, setShipments] = useState([]);
+  const [selectedShipmentId, setSelectedShipmentId] = useState('manual');
+  const [selectedShipmentLineId, setSelectedShipmentLineId] = useState('');
   const [selectedSkuId, setSelectedSkuId] = useState('');
   const [quantity, setQuantity] = useState(10);
   const [destination, setDestination] = useState('');
@@ -24,13 +29,15 @@ const ExportShipment = () => {
   const [error, setError] = useState(null);
 
   const fetchExportPlanningData = async () => {
-    const [inventoryResponse, skuResponse] = await Promise.all([
+    const [inventoryResponse, skuResponse, shipmentResponse] = await Promise.all([
       api.get('/api/v2/inventory'),
-      api.get('/api/v2/skus')
+      api.get('/api/v2/skus'),
+      api.get('/api/v2/shipments?shipmentType=outbound&limit=100')
     ]);
 
     setInventory(inventoryResponse.data.data || []);
     setSkus(skuResponse.data.data || []);
+    setShipments(shipmentResponse.data.data || []);
   };
 
   useEffect(() => {
@@ -50,6 +57,12 @@ const ExportShipment = () => {
     loadExportPlanningData();
   }, []);
 
+  const openOutboundShipments = shipments.filter((shipment) => (
+    Array.isArray(shipment.lines) && shipment.lines.some((line) => getLineRemaining(line) > 0)
+  ));
+  const selectedShipment = openOutboundShipments.find((shipment) => String(shipment.shipment_id) === String(selectedShipmentId));
+  const availableShipmentLines = selectedShipment?.lines?.filter((line) => getLineRemaining(line) > 0) || [];
+  const selectedShipmentLine = availableShipmentLines.find((line) => String(line.shipmentLineId) === String(selectedShipmentLineId));
   const selectedSku = skus.find((sku) => String(sku.sku_id) === String(selectedSkuId));
   const requestedQuantity = Math.max(1, Number(quantity || 0));
 
@@ -78,6 +91,31 @@ const ExportShipment = () => {
   const isFullyAllocated = selectedSku && plannedQuantity >= requestedQuantity;
   const shortage = Math.max(0, requestedQuantity - plannedQuantity);
 
+  const handleShipmentChange = (shipmentId) => {
+    setSelectedShipmentId(shipmentId);
+    setSelectedShipmentLineId('');
+
+    if (shipmentId === 'manual') return;
+
+    const shipment = openOutboundShipments.find((item) => String(item.shipment_id) === String(shipmentId));
+    const firstOpenLine = shipment?.lines?.find((line) => getLineRemaining(line) > 0);
+    if (firstOpenLine) {
+      setSelectedShipmentLineId(String(firstOpenLine.shipmentLineId));
+      setSelectedSkuId(String(firstOpenLine.skuId));
+      setQuantity(getLineRemaining(firstOpenLine));
+      setDestination(shipment.supplier_or_customer || shipment.shipment_number || 'Shipment export');
+    }
+  };
+
+  const handleShipmentLineChange = (shipmentLineId) => {
+    setSelectedShipmentLineId(shipmentLineId);
+    const line = availableShipmentLines.find((item) => String(item.shipmentLineId) === String(shipmentLineId));
+    if (line) {
+      setSelectedSkuId(String(line.skuId));
+      setQuantity(getLineRemaining(line));
+    }
+  };
+
   const handleExportStock = async () => {
     if (!selectedSku || !isFullyAllocated) return;
 
@@ -89,7 +127,8 @@ const ExportShipment = () => {
       const response = await api.post('/api/v2/export-stock', {
         skuId: selectedSku.sku_id,
         quantity: requestedQuantity,
-        destination: destination || 'Manual export'
+        destination: destination || 'Manual export',
+        shipmentLineId: selectedShipmentLine ? selectedShipmentLine.shipmentLineId : undefined
       });
 
       const exported = response.data.data;
@@ -132,6 +171,35 @@ const ExportShipment = () => {
 
       <section className="inventory-section">
         <div className="filter-bar export-filter-grid">
+          <label>
+            Outbound Shipment
+            <select value={selectedShipmentId} onChange={(event) => handleShipmentChange(event.target.value)}>
+              <option value="manual">Manual export / no shipment line</option>
+              {openOutboundShipments.map((shipment) => (
+                <option key={shipment.shipment_id} value={shipment.shipment_id}>
+                  {shipment.shipment_number} — {shipment.supplier_or_customer || 'Outbound shipment'} ({formatNumber(shipment.total_quantity - shipment.total_exported_quantity)} remaining)
+                </option>
+              ))}
+            </select>
+          </label>
+          {selectedShipment && (
+            <label>
+              Outbound Shipment Line
+              <select value={selectedShipmentLineId} onChange={(event) => handleShipmentLineChange(event.target.value)}>
+                <option value="">Select a shipment line</option>
+                {availableShipmentLines.map((line) => {
+                  const remaining = getLineRemaining(line);
+                  const exported = Number(line.exportedQuantity || 0);
+                  const progress = Number(line.quantity || 0) ? (exported / Number(line.quantity)) * 100 : 0;
+                  return (
+                    <option key={line.shipmentLineId} value={line.shipmentLineId}>
+                      {line.sku} — {formatNumber(remaining)} remaining of {formatNumber(line.quantity)} ({progress.toFixed(0)}% exported)
+                    </option>
+                  );
+                })}
+              </select>
+            </label>
+          )}
           <label>
             Outbound SKU
             <select value={selectedSkuId} onChange={(event) => setSelectedSkuId(event.target.value)}>
@@ -189,10 +257,34 @@ const ExportShipment = () => {
         </div>
       )}
 
+      {selectedShipmentLine && (
+        <section className="inventory-section">
+          <h2>Outbound Line Progress</h2>
+          <div className="dashboard-summary">
+            <div className="summary-card">
+              <h3>Shipment</h3>
+              <p>{selectedShipment.shipment_number}</p>
+            </div>
+            <div className="summary-card">
+              <h3>Exported</h3>
+              <p>{formatNumber(selectedShipmentLine.exportedQuantity)}</p>
+            </div>
+            <div className="summary-card">
+              <h3>Remaining</h3>
+              <p>{formatNumber(getLineRemaining(selectedShipmentLine))}</p>
+            </div>
+            <div className="summary-card">
+              <h3>Ordered</h3>
+              <p>{formatNumber(selectedShipmentLine.quantity)}</p>
+            </div>
+          </div>
+        </section>
+      )}
+
       {selectedSku && (
         <div className={isFullyAllocated ? 'success-message' : 'error-message'}>
           {isFullyAllocated
-            ? `Pick plan can fulfill ${formatNumber(requestedQuantity)} units${destination ? ` for ${destination}` : ''}.`
+            ? `${selectedShipmentLine ? 'Shipment-line' : 'Manual'} pick plan can fulfill ${formatNumber(requestedQuantity)} units${destination ? ` for ${destination}` : ''}.`
             : `Only ${formatNumber(plannedQuantity)} units are available to plan; shortage is ${formatNumber(shortage)} units.`}
         </div>
       )}

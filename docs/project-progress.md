@@ -1,10 +1,18 @@
 # Inventrack Project Progress
 
-Last updated: 2026-05-05
+Last updated: 2026-05-13
 
 ## Current Direction
 
 Inventrack is being rebuilt from a MongoDB prototype into a PostgreSQL-backed, enterprise-style inventory tracking system suitable for a resume portfolio project.
+
+## 2026-05-13 Sprint Update
+
+- Completed Sprint 1 — Shipment-Line-Aware Receive/Export UI.
+- `/receive` now loads open inbound shipments, supports inbound shipment-line selection, shows received/remaining/ordered line progress, pre-fills SKU/quantity from the chosen line, and sends `shipmentLineId` to `/api/v2/receive-stock` while preserving manual receive fallback.
+- `/export` now loads open outbound shipments, supports outbound shipment-line selection, shows exported/remaining/ordered line progress, pre-fills SKU/quantity/destination from the chosen line, and sends `shipmentLineId` to `/api/v2/export-stock` while preserving manual export fallback.
+- Checks: `npm run build` passed. Local PostgreSQL tests were skipped because neither `DATABASE_URL` nor `POSTGRES_URL` was configured in this worker environment.
+- Blockers: none for Sprint 1; Sprint 2 remains next.
 
 Target architecture:
 

@@ -4,10 +4,18 @@ import './ShipmentReceiver.css';
 
 const formatNumber = (value) => Number(value || 0).toLocaleString();
 
+const getLineRemaining = (line, direction) => {
+  const completed = direction === 'inbound' ? line.receivedQuantity : line.exportedQuantity;
+  return Math.max(0, Number(line.quantity || 0) - Number(completed || 0));
+};
+
 const ShipmentReceiver = () => {
   const [skus, setSkus] = useState([]);
   const [locations, setLocations] = useState([]);
   const [recommendations, setRecommendations] = useState([]);
+  const [shipments, setShipments] = useState([]);
+  const [selectedShipmentId, setSelectedShipmentId] = useState('manual');
+  const [selectedShipmentLineId, setSelectedShipmentLineId] = useState('');
   const [selectedSkuId, setSelectedSkuId] = useState('');
   const [quantity, setQuantity] = useState(25);
   const [supplier, setSupplier] = useState('');
@@ -17,15 +25,17 @@ const ShipmentReceiver = () => {
   const [error, setError] = useState(null);
 
   const fetchReceivePlanningData = async () => {
-    const [skuResponse, locationResponse, recommendationResponse] = await Promise.all([
+    const [skuResponse, locationResponse, recommendationResponse, shipmentResponse] = await Promise.all([
       api.get('/api/v2/skus'),
       api.get('/api/v2/storage-locations?status=active'),
-      api.get('/api/v2/storage-recommendations')
+      api.get('/api/v2/storage-recommendations'),
+      api.get('/api/v2/shipments?shipmentType=inbound&limit=100')
     ]);
 
     setSkus(skuResponse.data.data || []);
     setLocations(locationResponse.data.data || []);
     setRecommendations(recommendationResponse.data.data || []);
+    setShipments(shipmentResponse.data.data || []);
   };
 
   useEffect(() => {
@@ -45,6 +55,12 @@ const ShipmentReceiver = () => {
     loadReceivePlanningData();
   }, []);
 
+  const openInboundShipments = shipments.filter((shipment) => (
+    Array.isArray(shipment.lines) && shipment.lines.some((line) => getLineRemaining(line, 'inbound') > 0)
+  ));
+  const selectedShipment = openInboundShipments.find((shipment) => String(shipment.shipment_id) === String(selectedShipmentId));
+  const availableShipmentLines = selectedShipment?.lines?.filter((line) => getLineRemaining(line, 'inbound') > 0) || [];
+  const selectedShipmentLine = availableShipmentLines.find((line) => String(line.shipmentLineId) === String(selectedShipmentLineId));
   const selectedSku = skus.find((sku) => String(sku.sku_id) === String(selectedSkuId));
   const requestedQuantity = Math.max(1, Number(quantity || 0));
 
@@ -75,6 +91,31 @@ const ShipmentReceiver = () => {
     selectedSku && String(recommendation.skuId) === String(selectedSku.sku_id)
   ));
 
+  const handleShipmentChange = (shipmentId) => {
+    setSelectedShipmentId(shipmentId);
+    setSelectedShipmentLineId('');
+
+    if (shipmentId === 'manual') return;
+
+    const shipment = openInboundShipments.find((item) => String(item.shipment_id) === String(shipmentId));
+    const firstOpenLine = shipment?.lines?.find((line) => getLineRemaining(line, 'inbound') > 0);
+    if (firstOpenLine) {
+      setSelectedShipmentLineId(String(firstOpenLine.shipmentLineId));
+      setSelectedSkuId(String(firstOpenLine.skuId));
+      setQuantity(getLineRemaining(firstOpenLine, 'inbound'));
+      setSupplier(shipment.supplier_or_customer || shipment.shipment_number || 'Shipment receive');
+    }
+  };
+
+  const handleShipmentLineChange = (shipmentLineId) => {
+    setSelectedShipmentLineId(shipmentLineId);
+    const line = availableShipmentLines.find((item) => String(item.shipmentLineId) === String(shipmentLineId));
+    if (line) {
+      setSelectedSkuId(String(line.skuId));
+      setQuantity(getLineRemaining(line, 'inbound'));
+    }
+  };
+
   const handleReceiveStock = async (location) => {
     if (!selectedSku) return;
 
@@ -88,7 +129,8 @@ const ShipmentReceiver = () => {
         locationId: location.location_id,
         quantity: requestedQuantity,
         supplier: supplier || 'Manual receive',
-        lotNumber: `${selectedSku.sku}-${new Date().toISOString().slice(0, 10)}`
+        lotNumber: `${selectedSku.sku}-${new Date().toISOString().slice(0, 10)}`,
+        shipmentLineId: selectedShipmentLine ? selectedShipmentLine.shipmentLineId : undefined
       });
 
       const received = response.data.data;
@@ -127,6 +169,37 @@ const ShipmentReceiver = () => {
 
       <div className="input-section">
         <div className="form-group">
+          <label>Inbound Shipment</label>
+          <select value={selectedShipmentId} onChange={(event) => handleShipmentChange(event.target.value)}>
+            <option value="manual">Manual receive / no shipment line</option>
+            {openInboundShipments.map((shipment) => (
+              <option key={shipment.shipment_id} value={shipment.shipment_id}>
+                {shipment.shipment_number} — {shipment.supplier_or_customer || 'Inbound shipment'} ({formatNumber(shipment.total_quantity - shipment.total_received_quantity)} remaining)
+              </option>
+            ))}
+          </select>
+        </div>
+
+        {selectedShipment && (
+          <div className="form-group">
+            <label>Inbound Shipment Line</label>
+            <select value={selectedShipmentLineId} onChange={(event) => handleShipmentLineChange(event.target.value)}>
+              <option value="">Select a shipment line</option>
+              {availableShipmentLines.map((line) => {
+                const remaining = getLineRemaining(line, 'inbound');
+                const received = Number(line.receivedQuantity || 0);
+                const progress = Number(line.quantity || 0) ? (received / Number(line.quantity)) * 100 : 0;
+                return (
+                  <option key={line.shipmentLineId} value={line.shipmentLineId}>
+                    {line.sku} — {formatNumber(remaining)} remaining of {formatNumber(line.quantity)} ({progress.toFixed(0)}% received)
+                  </option>
+                );
+              })}
+            </select>
+          </div>
+        )}
+
+        <div className="form-group">
           <label>Inbound SKU</label>
           <select value={selectedSkuId} onChange={(event) => setSelectedSkuId(event.target.value)}>
             <option value="">Select a SKU</option>
@@ -162,7 +235,32 @@ const ShipmentReceiver = () => {
       {selectedSku && (
         <div className="success-message">
           <span className="success-icon">✓</span>
-          Planning receipt for {formatNumber(requestedQuantity)} units of {selectedSku.sku}{supplier ? ` from ${supplier}` : ''}.
+          Planning {selectedShipmentLine ? 'shipment-line' : 'manual'} receipt for {formatNumber(requestedQuantity)} units of {selectedSku.sku}{supplier ? ` from ${supplier}` : ''}.
+        </div>
+      )}
+
+      {selectedShipmentLine && (
+        <div className="recommendations-section">
+          <h2>Inbound Line Progress</h2>
+          <div className="shelf-recommendation">
+            <div className="shelf-info">
+              <h3>{selectedShipment.shipment_number} · {selectedShipmentLine.sku}</h3>
+              <div className="shelf-meta">
+                <span>{formatNumber(selectedShipmentLine.receivedQuantity)} received</span>
+                <span>{formatNumber(getLineRemaining(selectedShipmentLine, 'inbound'))} remaining</span>
+                <span>{formatNumber(selectedShipmentLine.quantity)} ordered</span>
+              </div>
+              <div className="capacity-visualization">
+                <div className="capacity-bar">
+                  <div
+                    className="fill-level"
+                    style={{ width: `${Math.min(100, (Number(selectedShipmentLine.receivedQuantity || 0) / Number(selectedShipmentLine.quantity || 1)) * 100)}%` }}
+                  />
+                </div>
+                <span className="capacity-percentage">Shipment-line receive progress</span>
+              </div>
+            </div>
+          </div>
         </div>
       )}
 

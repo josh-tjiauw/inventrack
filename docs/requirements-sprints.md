@@ -17,7 +17,7 @@ This document converts the enterprise redesign requirements into small implement
 
 ## Sprint 1 — Shipment-Line-Aware Receive/Export UI
 
-**Status:** Ready
+**Status:** Done
 
 **Requirement:** Close the visible gap between the frontend workflows and the shipment-backed backend transaction path.
 
@@ -33,6 +33,8 @@ This document converts the enterprise redesign requirements into small implement
 - Backend shipment-backed receive/export tests, if a Postgres test DB is available.
 
 **Done when:** Receive and Export can both operate against existing shipment lines from the UI.
+
+**Completed 2026-05-13:** `/receive` now loads open inbound shipments, lets users choose an inbound shipment line, shows received/remaining/ordered progress, pre-fills SKU/quantity from the line, and sends `shipmentLineId` to `/api/v2/receive-stock` while preserving manual receiving. `/export` now loads open outbound shipments, lets users choose an outbound shipment line, shows exported/remaining/ordered progress, pre-fills SKU/quantity/destination from the line, and sends `shipmentLineId` to `/api/v2/export-stock` while preserving manual export. Verified with `npm run build`; local PostgreSQL transaction tests were skipped because `DATABASE_URL`/`POSTGRES_URL` was not configured.
 
 ## Sprint 2 — Stock Transaction Service Tests
 
