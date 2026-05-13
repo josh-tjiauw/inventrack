@@ -31,6 +31,8 @@ Josh approved direct updates to `main` for Inventrack progress. Clawie should st
   - `docs/postgresql-relationship-map.md`
 - Portfolio deployment plan added:
   - `docs/portfolio-deployment.md`
+- Requirements sprint map added:
+  - `docs/requirements-sprints.md`
 
 ### PostgreSQL practice foundation
 
@@ -141,10 +143,23 @@ The new PostgreSQL implementation starts at:
 
 ## Next Best Work Items
 
-1. Wire the frontend receive/export pages to select existing shipment lines and pass `shipmentLineId` into the v2 write endpoints.
-2. Add unit-level service tests around `backend/services/stockTransactions.js` once a lightweight transaction mock/test harness is in place.
-3. Add Playwright browser-to-database workflow tests for create shipment, receive/export against shipment, and movement history verification.
-4. Keep Vercel/Render/Neon deployment checks documented and reproducible.
+Work is now organized into one-requirement-at-a-time sprint sections in:
+
+```text
+docs/requirements-sprints.md
+```
+
+Current sprint order:
+
+1. Shipment-line-aware Receive/Export UI.
+2. Stock transaction service tests.
+3. Playwright critical workflow tests.
+4. Move stock workflow.
+5. Reserve/release reservation workflows.
+6. Request validation and error shape.
+7. Request IDs, logging, and audit writes.
+8. Auth/RBAC and tenant isolation.
+9. Deployment smoke checklist.
 
 ## How Josh Can See Progress
 
