@@ -1,6 +1,8 @@
 const express = require('express');
 const { query, withTransaction, pingPostgres } = require('../db/postgres');
 const { receiveStock, exportStock, moveStock, reserveStock, releaseReservation } = require('../services/stockTransactions');
+const { parsePositiveInt, optionalInt, validateRequestBody, validateLines } = require('../utils/requestValidation');
+const { validationError } = require('../utils/apiErrors');
 
 const router = express.Router();
 
@@ -8,58 +10,6 @@ const asyncHandler = (fn) => (req, res, next) => {
   Promise.resolve(fn(req, res, next)).catch(next);
 };
 
-const parsePositiveInt = (value, fallback, max = 100) => {
-  const parsed = Number.parseInt(value, 10);
-  if (!Number.isFinite(parsed) || parsed < 1) return fallback;
-  return Math.min(parsed, max);
-};
-
-const optionalInt = (value) => {
-  if (value === undefined || value === null || value === '') return undefined;
-  const parsed = Number.parseInt(value, 10);
-  return Number.isFinite(parsed) ? parsed : undefined;
-};
-
-const positiveIntOrThrow = (value, fieldName) => {
-  const parsed = Number.parseInt(value, 10);
-  if (!Number.isFinite(parsed) || parsed < 1) {
-    const err = new Error(`${fieldName} must be a positive integer`);
-    err.status = 400;
-    throw err;
-  }
-  return parsed;
-};
-
-const requiredString = (value, fieldName) => {
-  const normalized = String(value || '').trim();
-  if (!normalized) {
-    const err = new Error(`${fieldName} is required`);
-    err.status = 400;
-    throw err;
-  }
-  return normalized;
-};
-
-const nonNegativeIntOrThrow = (value, fieldName, fallback = 0) => {
-  const input = value === undefined || value === null || value === '' ? fallback : value;
-  const parsed = Number.parseInt(input, 10);
-  if (!Number.isFinite(parsed) || parsed < 0) {
-    const err = new Error(`${fieldName} must be a non-negative integer`);
-    err.status = 400;
-    throw err;
-  }
-  return parsed;
-};
-
-const optionalEnumOrThrow = (value, fieldName, allowedValues, fallback) => {
-  const normalized = String(value || fallback).trim();
-  if (!allowedValues.includes(normalized)) {
-    const err = new Error(`${fieldName} must be one of: ${allowedValues.join(', ')}`);
-    err.status = 400;
-    throw err;
-  }
-  return normalized;
-};
 
 router.get('/health', asyncHandler(async (req, res) => {
   const [{ rows: tableCounts }, ping] = await Promise.all([
@@ -85,10 +35,12 @@ router.get('/health', asyncHandler(async (req, res) => {
 }));
 
 router.post('/warehouses', asyncHandler(async (req, res) => {
-  const companyId = positiveIntOrThrow(req.body.companyId, 'companyId');
-  const name = requiredString(req.body.name, 'name');
-  const address = req.body.address ? String(req.body.address).trim() : null;
-  const status = optionalEnumOrThrow(req.body.status, 'status', ['active', 'inactive', 'maintenance'], 'active');
+  const { companyId, name, address, status } = validateRequestBody(req.body, [
+    { key: 'companyId', aliases: ['company_id'], type: 'positiveInt', required: true },
+    { key: 'name', type: 'string', required: true },
+    { key: 'address', type: 'string', nullable: true },
+    { key: 'status', type: 'enum', values: ['active', 'inactive', 'maintenance'], default: 'active' }
+  ]);
 
   const result = await query(`
     INSERT INTO warehouses (company_id, name, address, status)
@@ -100,12 +52,14 @@ router.post('/warehouses', asyncHandler(async (req, res) => {
 }));
 
 router.post('/storage-locations', asyncHandler(async (req, res) => {
-  const warehouseId = positiveIntOrThrow(req.body.warehouseId, 'warehouseId');
-  const code = requiredString(req.body.code, 'code');
-  const name = requiredString(req.body.name, 'name');
-  const type = optionalEnumOrThrow(req.body.type, 'type', ['shelf', 'bin', 'rack', 'cold_storage', 'overflow', 'staging'], 'bin');
-  const capacityUnits = positiveIntOrThrow(req.body.capacityUnits || req.body.capacity_units, 'capacityUnits');
-  const status = optionalEnumOrThrow(req.body.status, 'status', ['active', 'inactive', 'maintenance'], 'active');
+  const { warehouseId, code, name, type, capacityUnits, status } = validateRequestBody(req.body, [
+    { key: 'warehouseId', aliases: ['warehouse_id'], type: 'positiveInt', required: true },
+    { key: 'code', type: 'string', required: true },
+    { key: 'name', type: 'string', required: true },
+    { key: 'type', type: 'enum', values: ['shelf', 'bin', 'rack', 'cold_storage', 'overflow', 'staging'], default: 'bin' },
+    { key: 'capacityUnits', aliases: ['capacity_units'], type: 'positiveInt', required: true },
+    { key: 'status', type: 'enum', values: ['active', 'inactive', 'maintenance'], default: 'active' }
+  ]);
 
   const result = await query(`
     INSERT INTO storage_locations (warehouse_id, code, name, type, capacity_units, status)
@@ -117,13 +71,15 @@ router.post('/storage-locations', asyncHandler(async (req, res) => {
 }));
 
 router.post('/skus', asyncHandler(async (req, res) => {
-  const companyId = positiveIntOrThrow(req.body.companyId, 'companyId');
-  const sku = requiredString(req.body.sku, 'sku');
-  const name = requiredString(req.body.name, 'name');
-  const category = requiredString(req.body.category, 'category');
-  const description = req.body.description ? String(req.body.description).trim() : null;
-  const unitOfMeasure = optionalEnumOrThrow(req.body.unitOfMeasure || req.body.unit_of_measure, 'unitOfMeasure', ['each', 'case', 'pallet', 'box', 'kg', 'lb'], 'each');
-  const reorderPoint = nonNegativeIntOrThrow(req.body.reorderPoint || req.body.reorder_point, 'reorderPoint', 0);
+  const { companyId, sku, name, category, description, unitOfMeasure, reorderPoint } = validateRequestBody(req.body, [
+    { key: 'companyId', aliases: ['company_id'], type: 'positiveInt', required: true },
+    { key: 'sku', type: 'string', required: true },
+    { key: 'name', type: 'string', required: true },
+    { key: 'category', type: 'string', required: true },
+    { key: 'description', type: 'string', nullable: true },
+    { key: 'unitOfMeasure', aliases: ['unit_of_measure'], type: 'enum', values: ['each', 'case', 'pallet', 'box', 'kg', 'lb'], default: 'each' },
+    { key: 'reorderPoint', aliases: ['reorder_point'], type: 'nonNegativeInt', default: 0 }
+  ]);
 
   const result = await query(`
     INSERT INTO skus (company_id, sku, name, category, description, unit_of_measure, reorder_point)
@@ -451,27 +407,16 @@ router.get('/shipments', asyncHandler(async (req, res) => {
 }));
 
 router.post('/shipments', asyncHandler(async (req, res) => {
-  const companyId = positiveIntOrThrow(req.body.companyId, 'companyId');
-  const shipmentNumber = requiredString(req.body.shipmentNumber || req.body.shipment_number, 'shipmentNumber');
-  const shipmentType = optionalEnumOrThrow(req.body.shipmentType || req.body.shipment_type, 'shipmentType', ['inbound', 'outbound'], 'inbound');
-  const status = optionalEnumOrThrow(req.body.status, 'status', ['draft', 'scheduled', 'in_progress', 'completed', 'cancelled'], 'draft');
-  const supplierOrCustomer = req.body.supplierOrCustomer || req.body.supplier_or_customer
-    ? String(req.body.supplierOrCustomer || req.body.supplier_or_customer).trim()
-    : null;
-  const expectedDate = req.body.expectedDate || req.body.expected_date || null;
-  const createdByUserId = optionalInt(req.body.createdByUserId || req.body.created_by_user_id) || null;
-  const lines = Array.isArray(req.body.lines) ? req.body.lines : [];
-
-  if (lines.length === 0) {
-    const err = new Error('lines must include at least one shipment line');
-    err.status = 400;
-    throw err;
-  }
-
-  const normalizedLines = lines.map((line, index) => ({
-    skuId: positiveIntOrThrow(line.skuId || line.sku_id, `lines[${index}].skuId`),
-    quantity: positiveIntOrThrow(line.quantity, `lines[${index}].quantity`)
-  }));
+  const { companyId, shipmentNumber, shipmentType, status, supplierOrCustomer, expectedDate, createdByUserId } = validateRequestBody(req.body, [
+    { key: 'companyId', aliases: ['company_id'], type: 'positiveInt', required: true },
+    { key: 'shipmentNumber', aliases: ['shipment_number'], type: 'string', required: true },
+    { key: 'shipmentType', aliases: ['shipment_type'], type: 'enum', values: ['inbound', 'outbound'], default: 'inbound' },
+    { key: 'status', type: 'enum', values: ['draft', 'scheduled', 'in_progress', 'completed', 'cancelled'], default: 'draft' },
+    { key: 'supplierOrCustomer', aliases: ['supplier_or_customer'], type: 'string', nullable: true },
+    { key: 'expectedDate', aliases: ['expected_date'], type: 'dateString', nullable: true },
+    { key: 'createdByUserId', aliases: ['created_by_user_id'], type: 'positiveInt', nullable: true }
+  ]);
+  const normalizedLines = validateLines(req.body.lines);
 
   const result = await withTransaction(async (client) => {
     const shipmentResult = await client.query(`
@@ -486,9 +431,7 @@ router.post('/shipments', asyncHandler(async (req, res) => {
     for (const line of normalizedLines) {
       const skuResult = await client.query('SELECT id, sku, name FROM skus WHERE id = $1 AND company_id = $2', [line.skuId, companyId]);
       if (skuResult.rowCount === 0) {
-        const err = new Error(`SKU ${line.skuId} does not exist for company ${companyId}`);
-        err.status = 400;
-        throw err;
+        throw validationError(`SKU ${line.skuId} does not exist for company ${companyId}`);
       }
 
       const lineResult = await client.query(`
@@ -514,15 +457,17 @@ router.post('/shipments', asyncHandler(async (req, res) => {
 }));
 
 router.post('/receive-stock', asyncHandler(async (req, res) => {
-  const skuId = positiveIntOrThrow(req.body.skuId, 'skuId');
-  const locationId = positiveIntOrThrow(req.body.locationId, 'locationId');
-  const quantity = positiveIntOrThrow(req.body.quantity, 'quantity');
-  const performedByUserId = optionalInt(req.body.performedByUserId || req.body.userId) || null;
-  const lotNumber = String(req.body.lotNumber || `LOT-${new Date().toISOString().slice(0, 10)}`).trim();
-  const supplier = String(req.body.supplier || req.body.reference || 'Manual receive').trim();
-  const notes = String(req.body.notes || `Received from ${supplier}`).trim();
-  const expirationDate = req.body.expirationDate || null;
-  const shipmentLineId = optionalInt(req.body.shipmentLineId || req.body.shipment_line_id) || null;
+  const { skuId, locationId, quantity, performedByUserId, lotNumber, supplier, notes, expirationDate, shipmentLineId } = validateRequestBody(req.body, [
+    { key: 'skuId', aliases: ['sku_id'], type: 'positiveInt', required: true },
+    { key: 'locationId', aliases: ['location_id'], type: 'positiveInt', required: true },
+    { key: 'quantity', type: 'positiveInt', required: true },
+    { key: 'performedByUserId', aliases: ['performed_by_user_id', 'userId'], type: 'positiveInt', nullable: true },
+    { key: 'lotNumber', aliases: ['lot_number'], type: 'string', default: `LOT-${new Date().toISOString().slice(0, 10)}` },
+    { key: 'supplier', aliases: ['reference'], type: 'string', default: 'Manual receive' },
+    { key: 'notes', type: 'string', nullable: true },
+    { key: 'expirationDate', aliases: ['expiration_date'], type: 'dateString', nullable: true },
+    { key: 'shipmentLineId', aliases: ['shipment_line_id'], type: 'positiveInt', nullable: true }
+  ]);
 
   const result = await receiveStock({
     skuId,
@@ -531,7 +476,7 @@ router.post('/receive-stock', asyncHandler(async (req, res) => {
     performedByUserId,
     lotNumber,
     supplier,
-    notes,
+    notes: notes || `Received from ${supplier}`,
     expirationDate,
     shipmentLineId
   });
@@ -540,19 +485,21 @@ router.post('/receive-stock', asyncHandler(async (req, res) => {
 }));
 
 router.post('/export-stock', asyncHandler(async (req, res) => {
-  const skuId = positiveIntOrThrow(req.body.skuId, 'skuId');
-  const quantity = positiveIntOrThrow(req.body.quantity, 'quantity');
-  const performedByUserId = optionalInt(req.body.performedByUserId || req.body.userId) || null;
-  const destination = String(req.body.destination || req.body.customer || 'Manual export').trim();
-  const notes = String(req.body.notes || `Exported to ${destination}`).trim();
-  const shipmentLineId = optionalInt(req.body.shipmentLineId || req.body.shipment_line_id) || null;
+  const { skuId, quantity, performedByUserId, destination, notes, shipmentLineId } = validateRequestBody(req.body, [
+    { key: 'skuId', aliases: ['sku_id'], type: 'positiveInt', required: true },
+    { key: 'quantity', type: 'positiveInt', required: true },
+    { key: 'performedByUserId', aliases: ['performed_by_user_id', 'userId'], type: 'positiveInt', nullable: true },
+    { key: 'destination', aliases: ['customer'], type: 'string', default: 'Manual export' },
+    { key: 'notes', type: 'string', nullable: true },
+    { key: 'shipmentLineId', aliases: ['shipment_line_id'], type: 'positiveInt', nullable: true }
+  ]);
 
   const result = await exportStock({
     skuId,
     quantity,
     performedByUserId,
     destination,
-    notes,
+    notes: notes || `Exported to ${destination}`,
     shipmentLineId
   });
 
@@ -560,11 +507,13 @@ router.post('/export-stock', asyncHandler(async (req, res) => {
 }));
 
 router.post('/move-stock', asyncHandler(async (req, res) => {
-  const inventoryLotId = positiveIntOrThrow(req.body.inventoryLotId || req.body.inventory_lot_id, 'inventoryLotId');
-  const destinationLocationId = positiveIntOrThrow(req.body.destinationLocationId || req.body.toLocationId || req.body.destination_location_id, 'destinationLocationId');
-  const quantity = positiveIntOrThrow(req.body.quantity, 'quantity');
-  const performedByUserId = optionalInt(req.body.performedByUserId || req.body.userId) || null;
-  const notes = String(req.body.notes || 'Manual stock move').trim();
+  const { inventoryLotId, destinationLocationId, quantity, performedByUserId, notes } = validateRequestBody(req.body, [
+    { key: 'inventoryLotId', aliases: ['inventory_lot_id'], type: 'positiveInt', required: true },
+    { key: 'destinationLocationId', aliases: ['destination_location_id', 'toLocationId'], type: 'positiveInt', required: true },
+    { key: 'quantity', type: 'positiveInt', required: true },
+    { key: 'performedByUserId', aliases: ['performed_by_user_id', 'userId'], type: 'positiveInt', nullable: true },
+    { key: 'notes', type: 'string', default: 'Manual stock move' }
+  ]);
 
   const result = await moveStock({
     inventoryLotId,
@@ -578,10 +527,12 @@ router.post('/move-stock', asyncHandler(async (req, res) => {
 }));
 
 router.post('/reserve-stock', asyncHandler(async (req, res) => {
-  const inventoryLotId = positiveIntOrThrow(req.body.inventoryLotId || req.body.inventory_lot_id, 'inventoryLotId');
-  const quantity = positiveIntOrThrow(req.body.quantity, 'quantity');
-  const performedByUserId = optionalInt(req.body.performedByUserId || req.body.userId) || null;
-  const notes = String(req.body.notes || 'Manual stock reservation').trim();
+  const { inventoryLotId, quantity, performedByUserId, notes } = validateRequestBody(req.body, [
+    { key: 'inventoryLotId', aliases: ['inventory_lot_id'], type: 'positiveInt', required: true },
+    { key: 'quantity', type: 'positiveInt', required: true },
+    { key: 'performedByUserId', aliases: ['performed_by_user_id', 'userId'], type: 'positiveInt', nullable: true },
+    { key: 'notes', type: 'string', default: 'Manual stock reservation' }
+  ]);
 
   const result = await reserveStock({
     inventoryLotId,
@@ -594,10 +545,12 @@ router.post('/reserve-stock', asyncHandler(async (req, res) => {
 }));
 
 router.post('/release-reservation', asyncHandler(async (req, res) => {
-  const inventoryLotId = positiveIntOrThrow(req.body.inventoryLotId || req.body.inventory_lot_id, 'inventoryLotId');
-  const quantity = positiveIntOrThrow(req.body.quantity, 'quantity');
-  const performedByUserId = optionalInt(req.body.performedByUserId || req.body.userId) || null;
-  const notes = String(req.body.notes || 'Manual reservation release').trim();
+  const { inventoryLotId, quantity, performedByUserId, notes } = validateRequestBody(req.body, [
+    { key: 'inventoryLotId', aliases: ['inventory_lot_id'], type: 'positiveInt', required: true },
+    { key: 'quantity', type: 'positiveInt', required: true },
+    { key: 'performedByUserId', aliases: ['performed_by_user_id', 'userId'], type: 'positiveInt', nullable: true },
+    { key: 'notes', type: 'string', default: 'Manual reservation release' }
+  ]);
 
   const result = await releaseReservation({
     inventoryLotId,

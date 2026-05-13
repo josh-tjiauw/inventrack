@@ -117,7 +117,7 @@ This document converts the enterprise redesign requirements into small implement
 
 ## Sprint 6 — Request Validation and Error Shape
 
-**Status:** Ready
+**Status:** Done
 
 **Requirement:** Make the API safer and more portfolio-polished.
 
@@ -130,6 +130,8 @@ This document converts the enterprise redesign requirements into small implement
 - Backend tests for invalid payloads and conflict payloads.
 
 **Done when:** Write endpoints reject bad input consistently and return structured errors.
+
+**Completed 2026-05-13:** Added lightweight request body validation schemas for PostgreSQL v2 write endpoints, including shared positive-integer, enum, non-negative integer, date, string, and shipment-line validation. Standardized API errors now include `success: false`, an `error.code`, an `error.message`, optional validation `details`, and the legacy top-level `message` for frontend compatibility. Business-rule failures from stock transaction services now return `BUSINESS_RULE_CONFLICT` while preserving HTTP `409 Conflict`. Added backend coverage for invalid payload shape and enum validation, and expanded conflict assertions. Verified with `npm run build` and `cd backend && npm run test:postgres`; local PostgreSQL-backed cases were skipped because `DATABASE_URL`/`POSTGRES_URL` was not configured, while non-DB validation tests passed.
 
 ## Sprint 7 — Request IDs, Logging, and Audit Writes
 

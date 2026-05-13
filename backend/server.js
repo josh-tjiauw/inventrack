@@ -87,11 +87,19 @@ app.get('/api/health', async (req, res, next) => {
 
 // Global error handling middleware
 app.use((err, req, res, next) => {
-  console.error('Unhandled error:', err.stack || err.message);
-  
+  const status = err.status || 500;
+  if (status >= 500) {
+    console.error('Unhandled error:', err.stack || err.message);
+  }
+
   if (err.name === 'ValidationError') {
     return res.status(400).json({
       success: false,
+      error: {
+        code: 'VALIDATION_ERROR',
+        message: 'Validation error',
+        details: Object.values(err.errors).map(e => ({ message: e.message }))
+      },
       message: 'Validation error',
       errors: Object.values(err.errors).map(e => e.message)
     });
@@ -100,15 +108,26 @@ app.use((err, req, res, next) => {
   if (err.name === 'CastError') {
     return res.status(400).json({
       success: false,
+      error: {
+        code: 'VALIDATION_ERROR',
+        message: 'Invalid ID format'
+      },
       message: 'Invalid ID format'
     });
   }
 
-  res.status(err.status || 500).json({
+  const isProductionInternalError = process.env.NODE_ENV === 'production' && status >= 500;
+  const message = isProductionInternalError ? 'Internal server error' : err.message;
+  const code = err.code || (status === 409 ? 'BUSINESS_RULE_CONFLICT' : status === 400 ? 'VALIDATION_ERROR' : 'INTERNAL_ERROR');
+
+  res.status(status).json({
     success: false,
-    message: process.env.NODE_ENV === 'production' 
-      ? 'Internal server error' 
-      : err.message
+    error: {
+      code,
+      message,
+      ...(err.details ? { details: err.details } : {})
+    },
+    message
   });
 });
 

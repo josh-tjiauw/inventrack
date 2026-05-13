@@ -5,6 +5,46 @@ const { receiveStock, exportStock, moveStock, reserveStock, releaseReservation }
 
 const describeIfPostgres = process.env.DATABASE_URL || process.env.POSTGRES_URL ? describe : describe.skip;
 
+describe('PostgreSQL v2 request validation and error shape', () => {
+  it('rejects invalid write payloads with structured validation errors before database work', async () => {
+    const res = await request(app)
+      .post('/api/v2/receive-stock')
+      .send({ skuId: 'not-a-number', locationId: 1, quantity: 0 });
+
+    expect(res.statusCode).toBe(400);
+    expect(res.body).toHaveProperty('success', false);
+    expect(res.body.error).toMatchObject({
+      code: 'VALIDATION_ERROR',
+      message: 'Invalid request payload'
+    });
+    expect(res.body.error.details).toEqual(expect.arrayContaining([
+      expect.objectContaining({ field: 'skuId' }),
+      expect.objectContaining({ field: 'quantity' })
+    ]));
+  });
+
+  it('rejects invalid enum values with the same structured error shape', async () => {
+    const res = await request(app)
+      .post('/api/v2/shipments')
+      .send({
+        companyId: 1,
+        shipmentNumber: 'BAD-TYPE',
+        shipmentType: 'transfer',
+        lines: [{ skuId: 1, quantity: 1 }]
+      });
+
+    expect(res.statusCode).toBe(400);
+    expect(res.body).toHaveProperty('success', false);
+    expect(res.body.error).toMatchObject({
+      code: 'VALIDATION_ERROR',
+      message: 'Invalid request payload'
+    });
+    expect(res.body.error.details).toEqual(expect.arrayContaining([
+      expect.objectContaining({ field: 'shipmentType' })
+    ]));
+  });
+});
+
 describeIfPostgres('PostgreSQL v2 API', () => {
   afterAll(async () => {
     await closePool();
@@ -242,7 +282,10 @@ describeIfPostgres('PostgreSQL v2 API', () => {
 
     expect(res.statusCode).toBe(400);
     expect(res.body).toHaveProperty('success', false);
-    expect(res.body.message).toMatch(/lines must include/i);
+    expect(res.body.error).toMatchObject({ code: 'VALIDATION_ERROR' });
+    expect(res.body.error.details).toEqual(expect.arrayContaining([
+      expect.objectContaining({ field: 'lines', message: expect.stringMatching(/lines must include/i) })
+    ]));
   });
 
   it('returns rule-based storage recommendations', async () => {
@@ -289,6 +332,7 @@ describeIfPostgres('PostgreSQL v2 API', () => {
 
     expect(res.statusCode).toBe(409);
     expect(res.body).toHaveProperty('success', false);
+    expect(res.body.error).toMatchObject({ code: 'BUSINESS_RULE_CONFLICT' });
     expect(res.body.message).toMatch(/exceed location capacity/i);
   });
 
@@ -322,6 +366,7 @@ describeIfPostgres('PostgreSQL v2 API', () => {
 
     expect(res.statusCode).toBe(409);
     expect(res.body).toHaveProperty('success', false);
+    expect(res.body.error).toMatchObject({ code: 'BUSINESS_RULE_CONFLICT' });
     expect(res.body.message).toMatch(/available for export/i);
   });
 

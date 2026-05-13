@@ -8,6 +8,16 @@ Inventrack is being rebuilt from a MongoDB prototype into a PostgreSQL-backed, e
 
 ## 2026-05-13 Sprint Update
 
+- Completed Sprint 6 — Request Validation and Error Shape.
+- Added lightweight request body validation schemas for PostgreSQL v2 write endpoints, covering IDs, enums, non-negative integers, dates, optional strings, and shipment line arrays before database work begins.
+- Standardized API error responses around `success: false`, `error.code`, `error.message`, optional validation `error.details`, and the existing top-level `message` for frontend compatibility.
+- Stock transaction business-rule errors now preserve HTTP `409 Conflict` and include `BUSINESS_RULE_CONFLICT`; malformed write payloads return `VALIDATION_ERROR` with field-level details.
+- Added backend tests for invalid payloads and invalid enum values without requiring PostgreSQL, plus conflict response assertions for PostgreSQL-backed business-rule checks.
+- Checks: `npm run build` passed. `cd backend && npm run test:postgres` passed the non-DB validation tests; PostgreSQL-backed cases were skipped locally because neither `DATABASE_URL` nor `POSTGRES_URL` was configured in this worker environment.
+- Blockers: local PostgreSQL execution was unavailable in this worker; CI/local environments with a PostgreSQL URL should execute the full suite. Sprint 7 remains next.
+
+## 2026-05-13 Sprint Update
+
 - Completed Sprint 5 — Reserve and Release Reservation Workflows.
 - Added transaction-safe `reserveStock` and `releaseReservation` service logic plus `POST /api/v2/reserve-stock` and `POST /api/v2/release-reservation`.
 - Reservation workflows lock the inventory lot with `FOR UPDATE`, enforce available/reserved quantity limits, update `quantity_reserved` without changing `quantity_on_hand`, and write `stock_movements` rows with `movement_type = 'reserve'` or `movement_type = 'release_reservation'`.
@@ -201,10 +211,9 @@ docs/requirements-sprints.md
 
 Remaining sprint order:
 
-1. Request validation and error shape.
-2. Request IDs, logging, and audit writes.
-3. Auth/RBAC and tenant isolation.
-4. Deployment smoke checklist.
+1. Request IDs, logging, and audit writes.
+2. Auth/RBAC and tenant isolation.
+3. Deployment smoke checklist.
 
 ## How Josh Can See Progress
 

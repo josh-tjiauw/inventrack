@@ -1,16 +1,8 @@
 const { withTransaction } = require('../db/postgres');
+const { validationError, conflictError } = require('../utils/apiErrors');
 
-const badRequest = (message) => {
-  const err = new Error(message);
-  err.status = 400;
-  return err;
-};
-
-const conflict = (message) => {
-  const err = new Error(message);
-  err.status = 409;
-  return err;
-};
+const badRequest = (message) => validationError(message);
+const conflict = (message) => conflictError(message);
 
 const updateShipmentStatus = async (client, shipmentId, shipmentType) => {
   const progressResult = await client.query(`
