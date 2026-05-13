@@ -1,6 +1,7 @@
 const request = require('supertest');
 const { app } = require('../server');
-const { closePool } = require('../db/postgres');
+const { closePool, query } = require('../db/postgres');
+const { receiveStock, exportStock } = require('../services/stockTransactions');
 
 const describeIfPostgres = process.env.DATABASE_URL || process.env.POSTGRES_URL ? describe : describe.skip;
 
@@ -322,5 +323,132 @@ describeIfPostgres('PostgreSQL v2 API', () => {
     expect(res.statusCode).toBe(409);
     expect(res.body).toHaveProperty('success', false);
     expect(res.body.message).toMatch(/available for export/i);
+  });
+
+  it('rejects over-receiving a shipment line without changing line progress or inventory', async () => {
+    const suffix = Date.now();
+    const shipmentResult = await query(`
+      INSERT INTO shipments (company_id, shipment_number, shipment_type, status, supplier_or_customer)
+      VALUES (1, $1, 'inbound', 'scheduled', 'CI Over Receive Supplier')
+      RETURNING id
+    `, [`CI-IN-OVER-RECEIVE-${suffix}`]);
+    const lineResult = await query(`
+      INSERT INTO shipment_lines (shipment_id, sku_id, quantity)
+      VALUES ($1, 6, 1)
+      RETURNING id
+    `, [shipmentResult.rows[0].id]);
+    const shipmentLineId = lineResult.rows[0].id;
+    const lotNumber = `CI-OVER-RECEIVE-${suffix}`;
+
+    await expect(receiveStock({
+      skuId: 6,
+      locationId: 5,
+      quantity: 2,
+      lotNumber,
+      shipmentLineId,
+      notes: 'CI over-receive rollback check'
+    })).rejects.toMatchObject({ status: 409 });
+
+    const progressResult = await query(
+      'SELECT received_quantity FROM shipment_lines WHERE id = $1',
+      [shipmentLineId]
+    );
+    const lotResult = await query(
+      'SELECT id FROM inventory_lots WHERE lot_number = $1',
+      [lotNumber]
+    );
+
+    expect(progressResult.rows[0]).toHaveProperty('received_quantity', 0);
+    expect(lotResult.rowCount).toBe(0);
+  });
+
+  it('rolls back a receive transaction if movement audit insertion fails', async () => {
+    const suffix = Date.now();
+    const lotNumber = `CI-RECEIVE-ROLLBACK-${suffix}`;
+
+    await expect(receiveStock({
+      skuId: 6,
+      locationId: 5,
+      quantity: 1,
+      lotNumber,
+      performedByUserId: 999999,
+      notes: 'CI receive rollback check'
+    })).rejects.toThrow();
+
+    const lotResult = await query(
+      'SELECT id FROM inventory_lots WHERE lot_number = $1',
+      [lotNumber]
+    );
+    const movementResult = await query(
+      'SELECT id FROM stock_movements WHERE notes = $1',
+      ['CI receive rollback check']
+    );
+
+    expect(lotResult.rowCount).toBe(0);
+    expect(movementResult.rowCount).toBe(0);
+  });
+
+  it('rejects over-exporting a shipment line without changing line progress or inventory', async () => {
+    const suffix = Date.now();
+    const shipmentResult = await query(`
+      INSERT INTO shipments (company_id, shipment_number, shipment_type, status, supplier_or_customer)
+      VALUES (1, $1, 'outbound', 'scheduled', 'CI Over Export Customer')
+      RETURNING id
+    `, [`CI-OUT-OVER-EXPORT-${suffix}`]);
+    const lineResult = await query(`
+      INSERT INTO shipment_lines (shipment_id, sku_id, quantity)
+      VALUES ($1, 1, 1)
+      RETURNING id
+    `, [shipmentResult.rows[0].id]);
+    const shipmentLineId = lineResult.rows[0].id;
+    const beforeResult = await query(
+      'SELECT COALESCE(SUM(quantity_on_hand), 0)::int AS quantity_on_hand FROM inventory_lots WHERE sku_id = 1'
+    );
+
+    await expect(exportStock({
+      skuId: 1,
+      quantity: 2,
+      destination: 'CI Over Export Customer',
+      shipmentLineId,
+      notes: 'CI over-export rollback check'
+    })).rejects.toMatchObject({ status: 409 });
+
+    const progressResult = await query(
+      'SELECT exported_quantity FROM shipment_lines WHERE id = $1',
+      [shipmentLineId]
+    );
+    const afterResult = await query(
+      'SELECT COALESCE(SUM(quantity_on_hand), 0)::int AS quantity_on_hand FROM inventory_lots WHERE sku_id = 1'
+    );
+
+    expect(progressResult.rows[0]).toHaveProperty('exported_quantity', 0);
+    expect(afterResult.rows[0].quantity_on_hand).toBe(beforeResult.rows[0].quantity_on_hand);
+  });
+
+  it('rolls back an export transaction if movement audit insertion fails after lots are locked', async () => {
+    const beforeResult = await query(
+      'SELECT id, quantity_on_hand FROM inventory_lots WHERE sku_id = 1 ORDER BY expiration_date ASC NULLS LAST, location_id, id LIMIT 1'
+    );
+    const targetLot = beforeResult.rows[0];
+
+    await expect(exportStock({
+      skuId: 1,
+      quantity: 1,
+      destination: 'CI Rollback Customer',
+      performedByUserId: 999999,
+      notes: 'CI export rollback check'
+    })).rejects.toThrow();
+
+    const afterResult = await query(
+      'SELECT quantity_on_hand FROM inventory_lots WHERE id = $1',
+      [targetLot.id]
+    );
+    const movementResult = await query(
+      'SELECT id FROM stock_movements WHERE notes = $1',
+      ['CI export rollback check']
+    );
+
+    expect(afterResult.rows[0].quantity_on_hand).toBe(targetLot.quantity_on_hand);
+    expect(movementResult.rowCount).toBe(0);
   });
 });

@@ -38,7 +38,7 @@ This document converts the enterprise redesign requirements into small implement
 
 ## Sprint 2 — Stock Transaction Service Tests
 
-**Status:** Ready
+**Status:** Done
 
 **Requirement:** Strengthen confidence in `backend/services/stockTransactions.js`.
 
@@ -51,6 +51,8 @@ This document converts the enterprise redesign requirements into small implement
 - `cd backend && npm run test:postgres`
 
 **Done when:** Key stock transaction conflicts are covered by tests and pass in CI/local Postgres.
+
+**Completed 2026-05-13:** Added direct stock transaction service coverage to the PostgreSQL v2 Jest suite for over-receive, over-export, receive rollback after movement insertion failure, and export rollback after inventory lot updates. Existing suite coverage already includes insufficient capacity and insufficient stock API conflicts. Verified `npm run build` from the repo root and `npm run test:postgres` from `backend/`; local PostgreSQL tests were syntax-loaded but skipped because `DATABASE_URL`/`POSTGRES_URL` was not configured in this worker environment.
 
 ## Sprint 3 — Playwright Critical Workflow Tests
 

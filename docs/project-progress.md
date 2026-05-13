@@ -8,6 +8,14 @@ Inventrack is being rebuilt from a MongoDB prototype into a PostgreSQL-backed, e
 
 ## 2026-05-13 Sprint Update
 
+- Completed Sprint 2 — Stock Transaction Service Tests.
+- Added direct `backend/services/stockTransactions.js` coverage to the PostgreSQL v2 Jest suite for over-receive, over-export, receive rollback after movement insertion failure, and export rollback after inventory lot updates.
+- Existing PostgreSQL v2 tests continue to cover insufficient location capacity and insufficient available stock conflicts.
+- Checks: `npm run build` passed. `cd backend && npm run test:postgres` completed with the suite syntax-loaded but skipped locally because neither `DATABASE_URL` nor `POSTGRES_URL` was configured in this worker environment.
+- Blockers: local PostgreSQL execution was unavailable in this worker; CI/local environments with a PostgreSQL URL should execute the full suite.
+
+## 2026-05-13 Sprint Update
+
 - Completed Sprint 1 — Shipment-Line-Aware Receive/Export UI.
 - `/receive` now loads open inbound shipments, supports inbound shipment-line selection, shows received/remaining/ordered line progress, pre-fills SKU/quantity from the chosen line, and sends `shipmentLineId` to `/api/v2/receive-stock` while preserving manual receive fallback.
 - `/export` now loads open outbound shipments, supports outbound shipment-line selection, shows exported/remaining/ordered line progress, pre-fills SKU/quantity/destination from the chosen line, and sends `shipmentLineId` to `/api/v2/export-stock` while preserving manual export fallback.
@@ -157,17 +165,15 @@ Work is now organized into one-requirement-at-a-time sprint sections in:
 docs/requirements-sprints.md
 ```
 
-Current sprint order:
+Remaining sprint order:
 
-1. Shipment-line-aware Receive/Export UI.
-2. Stock transaction service tests.
-3. Playwright critical workflow tests.
-4. Move stock workflow.
-5. Reserve/release reservation workflows.
-6. Request validation and error shape.
-7. Request IDs, logging, and audit writes.
-8. Auth/RBAC and tenant isolation.
-9. Deployment smoke checklist.
+1. Playwright critical workflow tests.
+2. Move stock workflow.
+3. Reserve/release reservation workflows.
+4. Request validation and error shape.
+5. Request IDs, logging, and audit writes.
+6. Auth/RBAC and tenant isolation.
+7. Deployment smoke checklist.
 
 ## How Josh Can See Progress
 
