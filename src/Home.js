@@ -6,12 +6,14 @@ const Homepage = () => {
   const navigate = useNavigate();
 
   const techStack = [
-    { name: 'React', icon: 'fab fa-react', description: 'Frontend library for building interactive UIs' },
-    { name: 'Node.js', icon: 'fab fa-node-js', description: 'JavaScript runtime for backend services' },
-    { name: 'Express', icon: 'fas fa-server', description: 'Backend web application framework' },
-    { name: 'MongoDB', icon: 'fas fa-database', description: 'NoSQL database for flexible data storage' },
-    { name: 'HTML5', icon: 'fab fa-html5', description: 'Markup language for structuring content' },
-    { name: 'CSS3', icon: 'fab fa-css3-alt', description: 'Styling language for beautiful interfaces' },
+    { name: 'React', icon: 'fab fa-react', description: 'Responsive portfolio frontend with route-based workflows for dashboard, shipments, receiving, exporting, movement history, and system status.' },
+    { name: 'Node.js + Express', icon: 'fab fa-node-js', description: 'REST API powering PostgreSQL v2 endpoints, request IDs, demo RBAC, tenant guardrails, and transaction-safe inventory operations.' },
+    { name: 'PostgreSQL', icon: 'fas fa-database', description: 'Relational source of truth with warehouses, locations, SKUs, inventory lots, shipment lines, stock movements, audit logs, and reporting views.' },
+    { name: 'Neon', icon: 'fas fa-cloud', description: 'Hosted PostgreSQL database for the live demo, seeded with realistic inventory, shipment, and movement data.' },
+    { name: 'Render', icon: 'fas fa-server', description: 'Hosted backend API connected to Neon and serving live /api/v2 health, read-model, and write workflow endpoints.' },
+    { name: 'Vercel', icon: 'fas fa-rocket', description: 'Hosted React frontend for the portfolio demo, connected to the Render API.' },
+    { name: 'GitHub Actions', icon: 'fab fa-github', description: 'CI pipeline that builds the frontend and validates PostgreSQL migrations/tests against a disposable database.' },
+    { name: 'Playwright', icon: 'fas fa-check-circle', description: 'End-to-end workflow coverage for create shipment, receive/export against shipment lines, and movement-history verification.' },
   ];
 
   return (
@@ -20,7 +22,7 @@ const Homepage = () => {
         <div className="hero-content">
           <h1>Welcome to InvenTrack</h1>
           <p className="hero-subtitle">
-            Streamline your business operations with our powerful inventory management system
+            A PostgreSQL-backed inventory platform built to demonstrate enterprise data modeling, transaction-safe stock workflows, and live deployment discipline.
           </p>
           <div className="hero-buttons">
             <button 
@@ -51,20 +53,20 @@ const Homepage = () => {
         <div className="goal-content">
           <div className="goal-stats">
             <div className="stat-card">
-              <h3>Storage Management</h3>
-              <p>Efficiently organize supplies using AI to provide more space, and ease of transport</p>
+              <h3>Enterprise Inventory Model</h3>
+              <p>Track companies, users, warehouses, storage locations, SKUs, inventory lots, shipments, and shipment lines with relational PostgreSQL constraints.</p>
             </div>
             <div className="stat-card">
-              <h3>Real-time Monitoring</h3>
-              <p>Ability to view detailed statistics about your supplies in real-time.</p>
+              <h3>Transaction-Safe Stock Workflows</h3>
+              <p>Receive, export, move, reserve, and release stock through backend transactions that prevent invalid quantities and write movement history.</p>
             </div>
             <div className="stat-card">
-              <h3>Stockout Alerts</h3>
-              <p>Automatically warn users when a supply needs to be reordered.</p>
+              <h3>Operational Visibility</h3>
+              <p>Use live dashboards, warehouse capacity views, SKU catalogs, inventory explorers, movement history, low-stock signals, and storage recommendations.</p>
             </div>
             <div className="stat-card">
-              <h3>Reports and analytics</h3>
-              <p>Provide warning to managers when a supply needs to be reordered.</p>
+              <h3>Portfolio-Ready Deployment</h3>
+              <p>Run the React frontend on Vercel, the Express API on Render, PostgreSQL on Neon, and CI checks through GitHub Actions.</p>
             </div>
           </div>
         </div>
@@ -73,7 +75,7 @@ const Homepage = () => {
       <section className="tech-section">
         <h2>Our Technical Stack</h2>
         <p className="tech-intro">
-          Built with modern technologies to ensure performance, scalability, and reliability
+          Built with the same tools used in the live deployed portfolio version: React, Express, PostgreSQL, Neon, Render, Vercel, CI, and browser workflow tests.
         </p>
         <div className="tech-grid">
           {techStack.map((tech, index) => (
