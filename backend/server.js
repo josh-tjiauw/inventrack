@@ -4,6 +4,7 @@ const mongoose = require('mongoose');
 const shipmentRoutes = require('./routes/shipments');
 const v2Routes = require('./routes/v2');
 const { pingPostgres } = require('./db/postgres');
+const { requestContext } = require('./middleware/requestContext');
 const cors = require('cors');
 
 // Validate required environment variables when running the legacy MongoDB-backed app.
@@ -28,9 +29,11 @@ const app = express();
 const corsOptions = {
   origin: process.env.CORS_ORIGIN || 'http://localhost:3000',
   methods: ['GET', 'POST', 'PUT', 'DELETE'],
-  allowedHeaders: ['Content-Type', 'Authorization']
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Request-Id'],
+  exposedHeaders: ['X-Request-Id']
 };
 app.use(cors(corsOptions));
+app.use(requestContext);
 app.use(express.json());
 app.use('/api/shelves', require('./routes/shelves'));
 app.use('/api/shipments', shipmentRoutes);
@@ -73,6 +76,7 @@ app.get('/api/health', async (req, res, next) => {
 
     res.json({
       status: 'OK',
+      requestId: req.requestId,
       mode: postgresConfigured ? 'postgres_v2' : 'legacy_mongo',
       legacyMongo: {
         configured: Boolean(process.env.MONGODB_URI),
@@ -89,12 +93,17 @@ app.get('/api/health', async (req, res, next) => {
 app.use((err, req, res, next) => {
   const status = err.status || 500;
   if (status >= 500) {
-    console.error('Unhandled error:', err.stack || err.message);
+    console.error(JSON.stringify({
+      requestId: req.requestId,
+      message: err.message,
+      stack: err.stack
+    }));
   }
 
   if (err.name === 'ValidationError') {
     return res.status(400).json({
       success: false,
+      requestId: req.requestId,
       error: {
         code: 'VALIDATION_ERROR',
         message: 'Validation error',
@@ -108,6 +117,7 @@ app.use((err, req, res, next) => {
   if (err.name === 'CastError') {
     return res.status(400).json({
       success: false,
+      requestId: req.requestId,
       error: {
         code: 'VALIDATION_ERROR',
         message: 'Invalid ID format'
@@ -122,6 +132,7 @@ app.use((err, req, res, next) => {
 
   res.status(status).json({
     success: false,
+    requestId: req.requestId,
     error: {
       code,
       message,

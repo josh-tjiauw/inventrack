@@ -1,5 +1,6 @@
 const { withTransaction } = require('../db/postgres');
 const { validationError, conflictError } = require('../utils/apiErrors');
+const { writeAuditLog } = require('../utils/auditLog');
 
 const badRequest = (message) => validationError(message);
 const conflict = (message) => conflictError(message);
@@ -46,7 +47,8 @@ const receiveStock = async ({
   lotNumber,
   expirationDate = null,
   notes,
-  shipmentLineId = null
+  shipmentLineId = null,
+  requestId = null
 }) => withTransaction(async (client) => {
   let shipmentProgress = null;
 
@@ -166,9 +168,25 @@ const receiveStock = async ({
     shipmentProgress = lineUpdateResult.rows[0];
   }
 
+  const auditLog = await writeAuditLog(client, {
+    companyId: skuLocation.company_id,
+    actorUserId: performedByUserId,
+    action: 'stock.receive',
+    entityType: 'stock_movement',
+    entityId: movementResult.rows[0].id,
+    after: {
+      lot: upsertLotResult.rows[0],
+      movement: movementResult.rows[0],
+      shipment,
+      shipmentLine: shipmentProgress
+    },
+    requestId
+  });
+
   return {
     lot: upsertLotResult.rows[0],
     movement: movementResult.rows[0],
+    auditLog,
     sku: {
       skuId: skuLocation.sku_id,
       sku: skuLocation.sku,
@@ -192,7 +210,8 @@ const exportStock = async ({
   performedByUserId = null,
   destination,
   notes,
-  shipmentLineId = null
+  shipmentLineId = null,
+  requestId = null
 }) => withTransaction(async (client) => {
   let shipmentProgress = null;
 
@@ -324,6 +343,20 @@ const exportStock = async ({
       shipmentProgress = lineUpdateResult.rows[0];
     }
 
+  const auditLog = await writeAuditLog(client, {
+    companyId: sku.company_id,
+    actorUserId: performedByUserId,
+    action: 'stock.export',
+    entityType: 'stock_movement',
+    entityId: picks[0]?.movementId,
+    after: {
+      picks,
+      shipment,
+      shipmentLine: shipmentProgress
+    },
+    requestId
+  });
+
   return {
     sku: {
       skuId: sku.id,
@@ -335,7 +368,8 @@ const exportStock = async ({
     destination,
     picks,
     shipment,
-    shipmentLine: shipmentProgress
+    shipmentLine: shipmentProgress,
+    auditLog
   };
 });
 
@@ -344,7 +378,8 @@ const moveStock = async ({
   destinationLocationId,
   quantity,
   performedByUserId = null,
-  notes
+  notes,
+  requestId = null
 }) => withTransaction(async (client) => {
   const sourceResult = await client.query(`
     SELECT
@@ -471,6 +506,20 @@ const moveStock = async ({
     notes
   ]);
 
+  const auditLog = await writeAuditLog(client, {
+    companyId: source.company_id,
+    actorUserId: performedByUserId,
+    action: 'stock.move',
+    entityType: 'stock_movement',
+    entityId: movementResult.rows[0].id,
+    after: {
+      sourceLot: sourceLotResult.rows[0],
+      destinationLot,
+      movement: movementResult.rows[0]
+    },
+    requestId
+  });
+
   return {
     sku: {
       skuId: source.sku_id,
@@ -493,7 +542,8 @@ const moveStock = async ({
     },
     sourceLot: sourceLotResult.rows[0],
     destinationLot,
-    movement: movementResult.rows[0]
+    movement: movementResult.rows[0],
+    auditLog
   };
 });
 
@@ -501,7 +551,8 @@ const reserveStock = async ({
   inventoryLotId,
   quantity,
   performedByUserId = null,
-  notes
+  notes,
+  requestId = null
 }) => withTransaction(async (client) => {
   const lotResult = await client.query(`
     SELECT
@@ -574,7 +625,19 @@ const reserveStock = async ({
     },
     lot: updatedLotResult.rows[0],
     reservedQuantity: quantity,
-    movement: movementResult.rows[0]
+    movement: movementResult.rows[0],
+    auditLog: await writeAuditLog(client, {
+      companyId: lot.company_id,
+      actorUserId: performedByUserId,
+      action: 'stock.reserve',
+      entityType: 'stock_movement',
+      entityId: movementResult.rows[0].id,
+      after: {
+        lot: updatedLotResult.rows[0],
+        movement: movementResult.rows[0]
+      },
+      requestId
+    })
   };
 });
 
@@ -582,7 +645,8 @@ const releaseReservation = async ({
   inventoryLotId,
   quantity,
   performedByUserId = null,
-  notes
+  notes,
+  requestId = null
 }) => withTransaction(async (client) => {
   const lotResult = await client.query(`
     SELECT
@@ -654,7 +718,19 @@ const releaseReservation = async ({
     },
     lot: updatedLotResult.rows[0],
     releasedQuantity: quantity,
-    movement: movementResult.rows[0]
+    movement: movementResult.rows[0],
+    auditLog: await writeAuditLog(client, {
+      companyId: lot.company_id,
+      actorUserId: performedByUserId,
+      action: 'stock.release_reservation',
+      entityType: 'stock_movement',
+      entityId: movementResult.rows[0].id,
+      after: {
+        lot: updatedLotResult.rows[0],
+        movement: movementResult.rows[0]
+      },
+      requestId
+    })
   };
 });
 

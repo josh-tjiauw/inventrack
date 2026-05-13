@@ -9,10 +9,13 @@ describe('PostgreSQL v2 request validation and error shape', () => {
   it('rejects invalid write payloads with structured validation errors before database work', async () => {
     const res = await request(app)
       .post('/api/v2/receive-stock')
+      .set('X-Request-Id', 'req_validation_test')
       .send({ skuId: 'not-a-number', locationId: 1, quantity: 0 });
 
     expect(res.statusCode).toBe(400);
+    expect(res.headers['x-request-id']).toBe('req_validation_test');
     expect(res.body).toHaveProperty('success', false);
+    expect(res.body).toHaveProperty('requestId', 'req_validation_test');
     expect(res.body.error).toMatchObject({
       code: 'VALIDATION_ERROR',
       message: 'Invalid request payload'
@@ -95,6 +98,7 @@ describeIfPostgres('PostgreSQL v2 API', () => {
   it('creates a PostgreSQL warehouse', async () => {
     const res = await request(app)
       .post('/api/v2/warehouses')
+      .set('X-Request-Id', 'req_ci_warehouse_create')
       .send({
         companyId: 1,
         name: 'CI Automation Warehouse',
@@ -103,9 +107,24 @@ describeIfPostgres('PostgreSQL v2 API', () => {
       });
 
     expect(res.statusCode).toBe(201);
+    expect(res.headers['x-request-id']).toBe('req_ci_warehouse_create');
     expect(res.body).toHaveProperty('success', true);
+    expect(res.body).toHaveProperty('requestId', 'req_ci_warehouse_create');
     expect(res.body.data).toHaveProperty('warehouse_name', 'CI Automation Warehouse');
     expect(res.body.data).toHaveProperty('warehouse_status', 'active');
+    expect(res.body.auditLog).toMatchObject({
+      action: 'warehouse.create',
+      entity_type: 'warehouse',
+      request_id: 'req_ci_warehouse_create'
+    });
+
+    const auditResult = await query('SELECT action, entity_type, entity_id, request_id FROM audit_logs WHERE request_id = $1', ['req_ci_warehouse_create']);
+    expect(auditResult.rowCount).toBe(1);
+    expect(auditResult.rows[0]).toMatchObject({
+      action: 'warehouse.create',
+      entity_type: 'warehouse',
+      request_id: 'req_ci_warehouse_create'
+    });
   });
 
   it('creates a PostgreSQL storage location', async () => {

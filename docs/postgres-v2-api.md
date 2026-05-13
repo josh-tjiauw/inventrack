@@ -29,6 +29,18 @@ $env:DATABASE_URL = 'postgresql://postgres:postgres@localhost:5432/inventrack_pr
 
 ## Endpoints
 
+## Request IDs and audit behavior
+
+Every backend request receives a request ID. Clients may pass one with the `X-Request-Id` header; otherwise the API generates a `req_*` ID. The same value is returned in the `X-Request-Id` response header, included in structured error bodies as `requestId`, and written to request logs.
+
+Important PostgreSQL v2 mutations also write an `audit_logs` row with the same `request_id` so a demo can trace one API call through:
+
+- the HTTP response/header,
+- backend logs,
+- durable `audit_logs` records.
+
+Audited mutations currently include warehouse, storage-location, SKU, shipment, receive, export, move, reserve, and release-reservation writes.
+
 ### Health
 
 ```text

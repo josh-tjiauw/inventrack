@@ -3,6 +3,7 @@ const { query, withTransaction, pingPostgres } = require('../db/postgres');
 const { receiveStock, exportStock, moveStock, reserveStock, releaseReservation } = require('../services/stockTransactions');
 const { parsePositiveInt, optionalInt, validateRequestBody, validateLines } = require('../utils/requestValidation');
 const { validationError } = require('../utils/apiErrors');
+const { writeAuditLog } = require('../utils/auditLog');
 
 const router = express.Router();
 
@@ -27,6 +28,7 @@ router.get('/health', asyncHandler(async (req, res) => {
 
   res.json({
     success: true,
+    requestId: req.requestId,
     status: 'OK',
     database: 'PostgreSQL',
     checkedAt: ping.now,
@@ -42,13 +44,25 @@ router.post('/warehouses', asyncHandler(async (req, res) => {
     { key: 'status', type: 'enum', values: ['active', 'inactive', 'maintenance'], default: 'active' }
   ]);
 
-  const result = await query(`
-    INSERT INTO warehouses (company_id, name, address, status)
-    VALUES ($1, $2, $3, $4)
-    RETURNING id AS warehouse_id, company_id, name AS warehouse_name, address, status AS warehouse_status, created_at
-  `, [companyId, name, address, status]);
+  const { created, auditLog } = await withTransaction(async (client) => {
+    const result = await client.query(`
+      INSERT INTO warehouses (company_id, name, address, status)
+      VALUES ($1, $2, $3, $4)
+      RETURNING id AS warehouse_id, company_id, name AS warehouse_name, address, status AS warehouse_status, created_at
+    `, [companyId, name, address, status]);
+    const createdWarehouse = result.rows[0];
+    const audit = await writeAuditLog(client, {
+      companyId,
+      action: 'warehouse.create',
+      entityType: 'warehouse',
+      entityId: createdWarehouse.warehouse_id,
+      after: createdWarehouse,
+      requestId: req.requestId
+    });
+    return { created: createdWarehouse, auditLog: audit };
+  });
 
-  res.status(201).json({ success: true, data: result.rows[0] });
+  res.status(201).json({ success: true, requestId: req.requestId, auditLog, data: created });
 }));
 
 router.post('/storage-locations', asyncHandler(async (req, res) => {
@@ -61,13 +75,26 @@ router.post('/storage-locations', asyncHandler(async (req, res) => {
     { key: 'status', type: 'enum', values: ['active', 'inactive', 'maintenance'], default: 'active' }
   ]);
 
-  const result = await query(`
-    INSERT INTO storage_locations (warehouse_id, code, name, type, capacity_units, status)
-    VALUES ($1, $2, $3, $4, $5, $6)
-    RETURNING id AS location_id, warehouse_id, code AS location_code, name AS location_name, type AS location_type, capacity_units, status AS location_status, created_at
-  `, [warehouseId, code, name, type, capacityUnits, status]);
+  const { created, auditLog } = await withTransaction(async (client) => {
+    const result = await client.query(`
+      INSERT INTO storage_locations (warehouse_id, code, name, type, capacity_units, status)
+      VALUES ($1, $2, $3, $4, $5, $6)
+      RETURNING id AS location_id, warehouse_id, code AS location_code, name AS location_name, type AS location_type, capacity_units, status AS location_status, created_at
+    `, [warehouseId, code, name, type, capacityUnits, status]);
+    const createdLocation = result.rows[0];
+    const companyResult = await client.query('SELECT company_id FROM warehouses WHERE id = $1', [warehouseId]);
+    const audit = await writeAuditLog(client, {
+      companyId: companyResult.rows[0]?.company_id,
+      action: 'storage_location.create',
+      entityType: 'storage_location',
+      entityId: createdLocation.location_id,
+      after: createdLocation,
+      requestId: req.requestId
+    });
+    return { created: createdLocation, auditLog: audit };
+  });
 
-  res.status(201).json({ success: true, data: result.rows[0] });
+  res.status(201).json({ success: true, requestId: req.requestId, auditLog, data: created });
 }));
 
 router.post('/skus', asyncHandler(async (req, res) => {
@@ -81,13 +108,25 @@ router.post('/skus', asyncHandler(async (req, res) => {
     { key: 'reorderPoint', aliases: ['reorder_point'], type: 'nonNegativeInt', default: 0 }
   ]);
 
-  const result = await query(`
-    INSERT INTO skus (company_id, sku, name, category, description, unit_of_measure, reorder_point)
-    VALUES ($1, $2, $3, $4, $5, $6, $7)
-    RETURNING id AS sku_id, company_id, sku, name, category, description, unit_of_measure, reorder_point, created_at
-  `, [companyId, sku, name, category, description, unitOfMeasure, reorderPoint]);
+  const { created, auditLog } = await withTransaction(async (client) => {
+    const result = await client.query(`
+      INSERT INTO skus (company_id, sku, name, category, description, unit_of_measure, reorder_point)
+      VALUES ($1, $2, $3, $4, $5, $6, $7)
+      RETURNING id AS sku_id, company_id, sku, name, category, description, unit_of_measure, reorder_point, created_at
+    `, [companyId, sku, name, category, description, unitOfMeasure, reorderPoint]);
+    const createdSku = result.rows[0];
+    const audit = await writeAuditLog(client, {
+      companyId,
+      action: 'sku.create',
+      entityType: 'sku',
+      entityId: createdSku.sku_id,
+      after: createdSku,
+      requestId: req.requestId
+    });
+    return { created: createdSku, auditLog: audit };
+  });
 
-  res.status(201).json({ success: true, data: result.rows[0] });
+  res.status(201).json({ success: true, requestId: req.requestId, auditLog, data: created });
 }));
 
 router.get('/warehouses', asyncHandler(async (req, res) => {
@@ -447,13 +486,25 @@ router.post('/shipments', asyncHandler(async (req, res) => {
       });
     }
 
+    const auditLog = await writeAuditLog(client, {
+      companyId,
+      actorUserId: createdByUserId,
+      action: 'shipment.create',
+      entityType: 'shipment',
+      entityId: shipment.shipment_id,
+      after: { ...shipment, lines: insertedLines },
+      requestId: req.requestId
+    });
+
     return {
       ...shipment,
-      lines: insertedLines
+      lines: insertedLines,
+      auditLog
     };
   });
 
-  res.status(201).json({ success: true, data: result });
+  const { auditLog, ...data } = result;
+  res.status(201).json({ success: true, requestId: req.requestId, auditLog, data });
 }));
 
 router.post('/receive-stock', asyncHandler(async (req, res) => {
@@ -478,10 +529,11 @@ router.post('/receive-stock', asyncHandler(async (req, res) => {
     supplier,
     notes: notes || `Received from ${supplier}`,
     expirationDate,
-    shipmentLineId
+    shipmentLineId,
+    requestId: req.requestId
   });
 
-  res.status(201).json({ success: true, data: result });
+  res.status(201).json({ success: true, requestId: req.requestId, auditLog: result.auditLog, data: result });
 }));
 
 router.post('/export-stock', asyncHandler(async (req, res) => {
@@ -500,10 +552,11 @@ router.post('/export-stock', asyncHandler(async (req, res) => {
     performedByUserId,
     destination,
     notes: notes || `Exported to ${destination}`,
-    shipmentLineId
+    shipmentLineId,
+    requestId: req.requestId
   });
 
-  res.status(201).json({ success: true, data: result });
+  res.status(201).json({ success: true, requestId: req.requestId, auditLog: result.auditLog, data: result });
 }));
 
 router.post('/move-stock', asyncHandler(async (req, res) => {
@@ -520,10 +573,11 @@ router.post('/move-stock', asyncHandler(async (req, res) => {
     destinationLocationId,
     quantity,
     performedByUserId,
-    notes
+    notes,
+    requestId: req.requestId
   });
 
-  res.status(201).json({ success: true, data: result });
+  res.status(201).json({ success: true, requestId: req.requestId, auditLog: result.auditLog, data: result });
 }));
 
 router.post('/reserve-stock', asyncHandler(async (req, res) => {
@@ -538,10 +592,11 @@ router.post('/reserve-stock', asyncHandler(async (req, res) => {
     inventoryLotId,
     quantity,
     performedByUserId,
-    notes
+    notes,
+    requestId: req.requestId
   });
 
-  res.status(201).json({ success: true, data: result });
+  res.status(201).json({ success: true, requestId: req.requestId, auditLog: result.auditLog, data: result });
 }));
 
 router.post('/release-reservation', asyncHandler(async (req, res) => {
@@ -556,10 +611,11 @@ router.post('/release-reservation', asyncHandler(async (req, res) => {
     inventoryLotId,
     quantity,
     performedByUserId,
-    notes
+    notes,
+    requestId: req.requestId
   });
 
-  res.status(201).json({ success: true, data: result });
+  res.status(201).json({ success: true, requestId: req.requestId, auditLog: result.auditLog, data: result });
 }));
 
 router.get('/storage-recommendations', asyncHandler(async (req, res) => {

@@ -135,7 +135,7 @@ This document converts the enterprise redesign requirements into small implement
 
 ## Sprint 7 — Request IDs, Logging, and Audit Writes
 
-**Status:** Ready
+**Status:** Done
 
 **Requirement:** Improve observability and auditability.
 
@@ -149,6 +149,8 @@ This document converts the enterprise redesign requirements into small implement
 - Backend tests or manual checks prove request IDs appear and audit rows are written.
 
 **Done when:** Mutating operations are traceable by request ID and audit log entries.
+
+**Completed 2026-05-13:** Added request context middleware that accepts or generates `X-Request-Id`, returns it in response headers, includes it in `/api/health`, `/api/v2/health`, and structured error bodies, and logs structured request completion entries with the request ID. Added `audit_logs.request_id` migration support plus audit writes for warehouse, storage-location, SKU, shipment, receive, export, move, reserve, and release-reservation mutations. Documented request/audit behavior and added backend assertions for request ID propagation plus PostgreSQL audit row verification when a DB URL is configured. Verified with `npm run build` and `cd backend && npm run test:postgres`; local PostgreSQL-backed audit cases were skipped because `DATABASE_URL`/`POSTGRES_URL` was not configured, while non-DB request ID validation tests passed.
 
 ## Sprint 8 — Auth/RBAC and Tenant Isolation
 

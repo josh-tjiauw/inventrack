@@ -8,6 +8,16 @@ Inventrack is being rebuilt from a MongoDB prototype into a PostgreSQL-backed, e
 
 ## 2026-05-13 Sprint Update
 
+- Completed Sprint 7 — Request IDs, Logging, and Audit Writes.
+- Added request context middleware that accepts caller-provided `X-Request-Id` values or generates `req_*` IDs, returns them in response headers, includes them in health/error JSON, and logs structured completion records with method, path, status, duration, and request ID.
+- Added `database/migrations/004_audit_request_ids.sql` and wired CI migration loading so `audit_logs` can store indexed `request_id` values.
+- Added audit writes for key PostgreSQL v2 mutations: warehouse, storage-location, SKU, shipment, receive, export, move, reserve, and release-reservation workflows.
+- Documented request/audit trace behavior in `docs/postgres-v2-api.md` and updated migration docs.
+- Checks: `npm run build` passed. `cd backend && npm run test:postgres` passed non-DB request ID/error-shape tests; PostgreSQL-backed audit row tests were skipped locally because neither `DATABASE_URL` nor `POSTGRES_URL` was configured in this worker environment.
+- Blockers: local PostgreSQL execution was unavailable in this worker; CI/local environments with a PostgreSQL URL should execute the full audit-row suite. Sprint 8 remains next.
+
+## 2026-05-13 Sprint Update
+
 - Completed Sprint 6 — Request Validation and Error Shape.
 - Added lightweight request body validation schemas for PostgreSQL v2 write endpoints, covering IDs, enums, non-negative integers, dates, optional strings, and shipment line arrays before database work begins.
 - Standardized API error responses around `success: false`, `error.code`, `error.message`, optional validation `error.details`, and the existing top-level `message` for frontend compatibility.
@@ -184,7 +194,7 @@ Josh approved direct updates to `main` for Inventrack progress. Clawie should st
 
 ## Current Status
 
-The backend is deployed on Render and connected to Neon PostgreSQL. The frontend dashboard, Warehouse Location Map, Inventory Explorer, SKU Catalog page, Shipment Board page, Stock Movement History page, Receive Shipment workflow, Export Shipment workflow, Move Stock workflow, and System Status page consume PostgreSQL `/api/v2` endpoints for warehouses, storage locations, SKUs, inventory, shipments, stock movements, health, rule-based storage recommendations, and transaction-safe manual/shipment-backed receive/export/move plus reservation writes.
+The backend is deployed on Render and connected to Neon PostgreSQL. The frontend dashboard, Warehouse Location Map, Inventory Explorer, SKU Catalog page, Shipment Board page, Stock Movement History page, Receive Shipment workflow, Export Shipment workflow, Move Stock workflow, and System Status page consume PostgreSQL `/api/v2` endpoints for warehouses, storage locations, SKUs, inventory, shipments, stock movements, health, rule-based storage recommendations, and transaction-safe manual/shipment-backed receive/export/move plus reservation writes. Mutating PostgreSQL v2 operations now include request-ID traceability and durable audit log writes.
 
 The project has started the real PostgreSQL migration.
 
@@ -211,9 +221,8 @@ docs/requirements-sprints.md
 
 Remaining sprint order:
 
-1. Request IDs, logging, and audit writes.
-2. Auth/RBAC and tenant isolation.
-3. Deployment smoke checklist.
+1. Auth/RBAC and tenant isolation.
+2. Deployment smoke checklist.
 
 ## How Josh Can See Progress
 

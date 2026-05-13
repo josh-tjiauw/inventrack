@@ -85,6 +85,7 @@ jobs:
           psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f database/migrations/001_enterprise_schema.sql
           psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f database/migrations/002_reporting_views.sql
           psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f database/migrations/003_demo_seed.sql
+          psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f database/migrations/004_audit_request_ids.sql
         env:
           DATABASE_URL: postgres://postgres:postgres@localhost:5432/inventrack_ci
 
