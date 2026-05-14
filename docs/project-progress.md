@@ -296,3 +296,10 @@ POST /api/v2/move-stock
 POST /api/v2/reserve-stock
 POST /api/v2/release-reservation
 ```
+
+## 2026-05-14 - Navbar warehouse dropdown
+
+- Updated top navigation to four visible sections: combined Inventrack/Home block, Dashboard, Warehouse with hover dropdown arrow, and About Us.
+- Moved secondary workflow links into the Warehouse dropdown: Inventory, SKU Catalog, Shipments, Movements, Status, Receive Shipment, Export Shipment, and Move Stock.
+- Verification: npm run build completed successfully.
+
