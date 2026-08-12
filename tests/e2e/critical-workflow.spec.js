@@ -97,6 +97,19 @@ const buildWorkflowApi = () => {
       return;
     }
 
+    if (request.method() === 'GET' && path === '/api/v2/warehouses') {
+      await route.fulfill(json({
+        data: [
+          {
+            warehouse_id: 1,
+            warehouse_name: 'Anaheim DC',
+            warehouse_status: 'active'
+          }
+        ]
+      }));
+      return;
+    }
+
     if (request.method() === 'GET' && path === '/api/v2/storage-locations') {
       await route.fulfill(json({ data: locations }));
       return;
@@ -282,4 +295,57 @@ test('movement history explains empty filtered ledger results', async ({ page })
   await expect(page.getByText('Active filters: Movement type: reserve.')).toBeVisible();
   await page.getByRole('button', { name: 'Clear filters' }).click();
   await expect(page.getByLabel('Movement Type')).toHaveValue('all');
+});
+
+test('warehouse map explains empty filtered location results', async ({ page }) => {
+  const locations = [
+    {
+      location_id: 10,
+      warehouse_id: 1,
+      location_code: 'A-01-01',
+      location_name: 'Aisle 1 Bin 1',
+      location_type: 'bin',
+      warehouse_name: 'Anaheim DC',
+      location_status: 'active',
+      capacity_units: 500,
+      quantity_on_hand: 125,
+      quantity_available: 125,
+      sku_count: 1,
+      percent_full: 25
+    }
+  ];
+
+  await page.route('http://localhost:5000/api/v2/**', async (route) => {
+    const request = route.request();
+    const url = new URL(request.url());
+
+    if (request.method() === 'GET' && url.pathname === '/api/v2/warehouses') {
+      await route.fulfill(json({
+        data: [
+          {
+            warehouse_id: 1,
+            warehouse_name: 'Anaheim DC',
+            warehouse_status: 'active'
+          }
+        ]
+      }));
+      return;
+    }
+
+    if (request.method() === 'GET' && url.pathname === '/api/v2/storage-locations') {
+      const status = url.searchParams.get('status');
+      await route.fulfill(json({ data: status === 'inactive' ? [] : locations }));
+      return;
+    }
+
+    await route.abort();
+  });
+
+  await page.goto('/warehouses');
+  await expect(page.getByRole('heading', { name: 'Warehouse Location Map' })).toBeVisible();
+  await page.getByLabel('Location Status').selectOption('inactive');
+  await expect(page.getByRole('heading', { name: 'No storage locations match this map view' })).toBeVisible();
+  await expect(page.getByText('Active filters: Location status: inactive.')).toBeVisible();
+  await page.getByRole('button', { name: 'Clear filters' }).click();
+  await expect(page.getByLabel('Location Status')).toHaveValue('all');
 });

@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import api from './api';
 import './Dashboard.css';
 
@@ -12,10 +12,24 @@ const getCapacityColor = (percentFull) => {
 
 const WarehouseMap = () => {
   const [locations, setLocations] = useState([]);
+  const [warehouses, setWarehouses] = useState([]);
   const [warehouseFilter, setWarehouseFilter] = useState('all');
   const [statusFilter, setStatusFilter] = useState('all');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+
+  useEffect(() => {
+    const fetchWarehouses = async () => {
+      try {
+        const response = await api.get('/api/v2/warehouses');
+        setWarehouses(response.data.data || []);
+      } catch (err) {
+        console.warn('Unable to load warehouse filter metadata:', err.message);
+      }
+    };
+
+    fetchWarehouses();
+  }, []);
 
   useEffect(() => {
     const fetchLocations = async () => {
@@ -39,18 +53,20 @@ const WarehouseMap = () => {
     fetchLocations();
   }, [warehouseFilter, statusFilter]);
 
-  const warehouses = useMemo(() => {
-    const unique = new Map();
-    locations.forEach((location) => {
-      unique.set(location.warehouse_id, location.warehouse_name);
-    });
-    return Array.from(unique.entries()).sort((a, b) => a[1].localeCompare(b[1]));
-  }, [locations]);
-
   const totalCapacity = locations.reduce((sum, location) => sum + Number(location.capacity_units || 0), 0);
   const totalOnHand = locations.reduce((sum, location) => sum + Number(location.quantity_on_hand || 0), 0);
   const maintenanceCount = locations.filter((location) => location.location_status === 'maintenance').length;
   const activeCount = locations.filter((location) => location.location_status === 'active').length;
+  const selectedWarehouseName = warehouses.find((warehouse) => String(warehouse.warehouse_id) === String(warehouseFilter))?.warehouse_name;
+  const activeFilterLabels = [
+    warehouseFilter !== 'all' && `Warehouse: ${selectedWarehouseName || `#${warehouseFilter}`}`,
+    statusFilter !== 'all' && `Location status: ${statusFilter}`
+  ].filter(Boolean);
+
+  const resetFilters = () => {
+    setWarehouseFilter('all');
+    setStatusFilter('all');
+  };
 
   if (loading) return (
     <div className="loading-container">
@@ -114,8 +130,8 @@ const WarehouseMap = () => {
             Warehouse
             <select value={warehouseFilter} onChange={(event) => setWarehouseFilter(event.target.value)}>
               <option value="all">All warehouses</option>
-              {warehouses.map(([warehouseId, warehouseName]) => (
-                <option key={warehouseId} value={warehouseId}>{warehouseName}</option>
+              {warehouses.map((warehouse) => (
+                <option key={warehouse.warehouse_id} value={warehouse.warehouse_id}>{warehouse.warehouse_name}</option>
               ))}
             </select>
           </label>
@@ -133,40 +149,61 @@ const WarehouseMap = () => {
 
       <section className="inventory-section">
         <h2>Storage Locations</h2>
-        <div className="warehouse-map-grid">
-          {locations.map((location) => {
-            const percentFull = Number(location.percent_full || 0);
-            const color = getCapacityColor(percentFull);
+        {locations.length === 0 ? (
+          <div className="empty-state-card inventory-empty-state">
+            <h3>No storage locations match this map view</h3>
+            <p>
+              {activeFilterLabels.length > 0
+                ? `Active filters: ${activeFilterLabels.join(', ')}.`
+                : 'There are no storage locations to display yet.'}
+            </p>
+            <p>
+              {activeFilterLabels.length > 0
+                ? 'Clear the filters to return to the full warehouse map.'
+                : 'Create storage locations or load demo data to populate this view.'}
+            </p>
+            {activeFilterLabels.length > 0 && (
+              <button className="retry-button" type="button" onClick={resetFilters}>
+                Clear filters
+              </button>
+            )}
+          </div>
+        ) : (
+          <div className="warehouse-map-grid">
+            {locations.map((location) => {
+              const percentFull = Number(location.percent_full || 0);
+              const color = getCapacityColor(percentFull);
 
-            return (
-              <article key={location.location_id} className="warehouse-location-card">
-                <div className="location-card-header">
-                  <div>
-                    <h3>{location.location_code}</h3>
-                    <p>{location.location_name}</p>
+              return (
+                <article key={location.location_id} className="warehouse-location-card">
+                  <div className="location-card-header">
+                    <div>
+                      <h3>{location.location_code}</h3>
+                      <p>{location.location_name}</p>
+                    </div>
+                    <span className={`status-pill ${location.location_status === 'active' ? 'status-ok' : 'status-warning'}`}>
+                      {location.location_status}
+                    </span>
                   </div>
-                  <span className={`status-pill ${location.location_status === 'active' ? 'status-ok' : 'status-warning'}`}>
-                    {location.location_status}
-                  </span>
-                </div>
 
-                <p className="card-meta">{location.warehouse_name}</p>
-                <div className="capacity-bar">
-                  <div className="fill-level" style={{ width: `${Math.min(percentFull, 100)}%`, backgroundColor: color }} />
-                </div>
+                  <p className="card-meta">{location.warehouse_name}</p>
+                  <div className="capacity-bar">
+                    <div className="fill-level" style={{ width: `${Math.min(percentFull, 100)}%`, backgroundColor: color }} />
+                  </div>
 
-                <div className="location-metrics">
-                  <span>{percentFull.toFixed(2)}% full</span>
-                  <span>{formatNumber(location.quantity_on_hand)} / {formatNumber(location.capacity_units)}</span>
-                  <span>{formatNumber(location.quantity_available)} available</span>
-                  <span>{location.sku_count} SKU{Number(location.sku_count) === 1 ? '' : 's'}</span>
-                </div>
+                  <div className="location-metrics">
+                    <span>{percentFull.toFixed(2)}% full</span>
+                    <span>{formatNumber(location.quantity_on_hand)} / {formatNumber(location.capacity_units)}</span>
+                    <span>{formatNumber(location.quantity_available)} available</span>
+                    <span>{location.sku_count} SKU{Number(location.sku_count) === 1 ? '' : 's'}</span>
+                  </div>
 
-                <div className="location-type-pill">{location.location_type.replace('_', ' ')}</div>
-              </article>
-            );
-          })}
-        </div>
+                  <div className="location-type-pill">{location.location_type.replace('_', ' ')}</div>
+                </article>
+              );
+            })}
+          </div>
+        )}
       </section>
     </div>
   );
