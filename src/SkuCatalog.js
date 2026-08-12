@@ -36,6 +36,15 @@ const SkuCatalog = () => {
 
   const totalAvailable = skus.reduce((sum, sku) => sum + Number(sku.total_available || 0), 0);
   const lowStockCount = skus.filter((sku) => Number(sku.total_available || 0) <= Number(sku.reorder_point || 0)).length;
+  const activeFilterLabels = [
+    categoryFilter !== 'all' && `Category: ${categoryFilter}`,
+    lowStockOnly && 'Low stock only'
+  ].filter(Boolean);
+
+  const resetFilters = () => {
+    setCategoryFilter('all');
+    setLowStockOnly(false);
+  };
 
   if (loading) return (
     <div className="loading-container">
@@ -109,46 +118,67 @@ const SkuCatalog = () => {
 
       <section className="inventory-section">
         <h2>SKU Inventory Position</h2>
-        <div className="inventory-table-wrapper">
-          <table className="inventory-table">
-            <thead>
-              <tr>
-                <th>SKU</th>
-                <th>Name</th>
-                <th>Category</th>
-                <th>On Hand</th>
-                <th>Reserved</th>
-                <th>Available</th>
-                <th>Reorder Point</th>
-                <th>Status</th>
-              </tr>
-            </thead>
-            <tbody>
-              {skus.map((sku) => {
-                const available = Number(sku.total_available || 0);
-                const reorderPoint = Number(sku.reorder_point || 0);
-                const lowStock = available <= reorderPoint;
+        {skus.length === 0 ? (
+          <div className="empty-state-card inventory-empty-state">
+            <h3>No SKUs match these catalog filters</h3>
+            <p>
+              {activeFilterLabels.length > 0
+                ? `Active filters: ${activeFilterLabels.join(', ')}.`
+                : 'There are no SKU records to display yet.'}
+            </p>
+            <p>
+              {activeFilterLabels.length > 0
+                ? 'Clear the filters to return to the full SKU catalog.'
+                : 'Load demo data or add SKUs through the API to populate this view.'}
+            </p>
+            {activeFilterLabels.length > 0 && (
+              <button className="retry-button" type="button" onClick={resetFilters}>
+                Clear filters
+              </button>
+            )}
+          </div>
+        ) : (
+          <div className="inventory-table-wrapper">
+            <table className="inventory-table">
+              <thead>
+                <tr>
+                  <th>SKU</th>
+                  <th>Name</th>
+                  <th>Category</th>
+                  <th>On Hand</th>
+                  <th>Reserved</th>
+                  <th>Available</th>
+                  <th>Reorder Point</th>
+                  <th>Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                {skus.map((sku) => {
+                  const available = Number(sku.total_available || 0);
+                  const reorderPoint = Number(sku.reorder_point || 0);
+                  const lowStock = available <= reorderPoint;
 
-                return (
-                  <tr key={sku.sku_id}>
-                    <td>{sku.sku}</td>
-                    <td>{sku.name}</td>
-                    <td>{sku.category}</td>
-                    <td>{formatNumber(sku.total_on_hand)}</td>
-                    <td>{formatNumber(sku.total_reserved)}</td>
-                    <td>{formatNumber(available)}</td>
-                    <td>{formatNumber(reorderPoint)}</td>
-                    <td>
-                      <span className={`status-pill ${lowStock ? 'status-warning' : 'status-ok'}`}>
-                        {lowStock ? 'Reorder' : 'Healthy'}
-                      </span>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
+                  return (
+                    <tr key={sku.sku_id}>
+                      <td>{sku.sku}</td>
+                      <td>{sku.name}</td>
+                      <td>{sku.category}</td>
+                      <td>{formatNumber(sku.total_on_hand)}</td>
+                      <td>{formatNumber(sku.total_reserved)}</td>
+                      <td>{formatNumber(available)}</td>
+                      <td>{formatNumber(reorderPoint)}</td>
+                      <td>
+                        <span className={`status-pill ${lowStock ? 'status-warning' : 'status-ok'}`}>
+                          {lowStock ? 'Reorder' : 'Healthy'}
+                        </span>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
       </section>
     </div>
   );
