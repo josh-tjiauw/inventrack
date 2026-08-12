@@ -38,6 +38,32 @@
     max-width: 240px;
     margin-top: 0;
   }
+
+  .export-action-panel {
+    display: grid;
+    gap: 8px;
+    justify-items: end;
+    max-width: 320px;
+  }
+
+  .export-commit-button {
+    margin-top: 0;
+    min-width: 180px;
+    width: auto;
+  }
+
+  .export-readiness {
+    color: #64748b;
+    font-size: 0.9rem;
+    line-height: 1.35;
+    margin: 0;
+    text-align: right;
+  }
+
+  .export-readiness-ready {
+    color: #166534;
+    font-weight: 700;
+  }
   
   .items-list {
     border: 1px solid #eee;

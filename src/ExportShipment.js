@@ -90,6 +90,11 @@ const ExportShipment = () => {
   const plannedQuantity = pickPlan.reduce((sum, lot) => sum + lot.pickQuantity, 0);
   const isFullyAllocated = selectedSku && plannedQuantity >= requestedQuantity;
   const shortage = Math.max(0, requestedQuantity - plannedQuantity);
+  const exportReadinessMessage = !selectedSku
+    ? 'Choose an outbound SKU before committing an export.'
+    : isFullyAllocated
+      ? `Ready to export ${formatNumber(requestedQuantity)} unit(s) across ${pickPlan.length} lot(s).`
+      : `Reduce the quantity by ${formatNumber(shortage)} unit(s) or receive more stock before committing.`;
 
   const handleShipmentChange = (shipmentId) => {
     setSelectedShipmentId(shipmentId);
@@ -301,13 +306,22 @@ const ExportShipment = () => {
             <h2>Generated Pick Plan</h2>
             <p className="dashboard-subtitle">Lots are prioritized by earliest expiration date, then location code.</p>
           </div>
-          <button
-            className="submit-button"
-            onClick={handleExportStock}
-            disabled={!isFullyAllocated || submitting}
-          >
-            {submitting ? 'Exporting...' : 'Commit export'}
-          </button>
+          <div className="export-action-panel">
+            <button
+              className="submit-button export-commit-button"
+              onClick={handleExportStock}
+              disabled={!isFullyAllocated || submitting}
+              aria-describedby="export-readiness-message"
+            >
+              {submitting ? 'Exporting...' : 'Commit export'}
+            </button>
+            <p
+              id="export-readiness-message"
+              className={isFullyAllocated ? 'export-readiness export-readiness-ready' : 'export-readiness'}
+            >
+              {exportReadinessMessage}
+            </p>
+          </div>
         </div>
 
         {!selectedSku ? (
