@@ -53,6 +53,16 @@ const MovementHistory = () => {
   const totalQuantity = movements.reduce((sum, movement) => sum + Number(movement.quantity || 0), 0);
   const receiveCount = movements.filter((movement) => movement.movement_type === 'receive').length;
   const exportCount = movements.filter((movement) => movement.movement_type === 'export').length;
+  const selectedSkuCode = skus.find((sku) => String(sku.sku_id) === String(skuId))?.sku;
+  const activeFilterLabels = [
+    movementType !== 'all' && `Movement type: ${movementType.replace('_', ' ')}`,
+    selectedSkuCode && `SKU: ${selectedSkuCode}`
+  ].filter(Boolean);
+
+  const resetFilters = () => {
+    setMovementType('all');
+    setSkuId('all');
+  };
 
   if (loading) return (
     <div className="loading-container">
@@ -140,6 +150,26 @@ const MovementHistory = () => {
 
       <section className="inventory-section">
         <h2>Ledger Rows</h2>
+        {movements.length === 0 ? (
+          <div className="empty-state-card inventory-empty-state">
+            <h3>No stock movements match this ledger view</h3>
+            <p>
+              {activeFilterLabels.length > 0
+                ? `Active filters: ${activeFilterLabels.join(', ')}.`
+                : 'No receive, export, move, reserve, or adjustment activity has been recorded yet.'}
+            </p>
+            <p>
+              {activeFilterLabels.length > 0
+                ? 'Clear the filters to return to the full movement history.'
+                : 'Receive, export, or move stock to populate the audit ledger.'}
+            </p>
+            {activeFilterLabels.length > 0 && (
+              <button className="retry-button" type="button" onClick={resetFilters}>
+                Clear filters
+              </button>
+            )}
+          </div>
+        ) : (
         <div className="inventory-table-wrapper">
           <table className="inventory-table">
             <thead>
@@ -174,6 +204,7 @@ const MovementHistory = () => {
             </tbody>
           </table>
         </div>
+        )}
       </section>
     </div>
   );

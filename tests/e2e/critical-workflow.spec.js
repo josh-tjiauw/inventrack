@@ -252,3 +252,34 @@ test('portfolio flow creates a shipment, receives against a line, exports agains
   await expect(page.getByText('No destination can fit this move')).toBeVisible();
   await expect(page.getByRole('button', { name: 'Move Stock' })).toBeDisabled();
 });
+
+test('movement history explains empty filtered ledger results', async ({ page }) => {
+  await page.route('http://localhost:5000/api/v2/**', async (route) => {
+    const request = route.request();
+    const url = new URL(request.url());
+
+    if (request.method() === 'GET' && url.pathname === '/api/v2/skus') {
+      await route.fulfill(json({
+        data: [
+          { sku_id: 1, sku: 'WHEY-001', name: 'Whey Protein 5lb' }
+        ]
+      }));
+      return;
+    }
+
+    if (request.method() === 'GET' && url.pathname === '/api/v2/stock-movements') {
+      await route.fulfill(json({ data: [] }));
+      return;
+    }
+
+    await route.abort();
+  });
+
+  await page.goto('/movements');
+  await expect(page.getByRole('heading', { name: 'Stock Movement History' })).toBeVisible();
+  await page.getByLabel('Movement Type').selectOption('reserve');
+  await expect(page.getByRole('heading', { name: 'No stock movements match this ledger view' })).toBeVisible();
+  await expect(page.getByText('Active filters: Movement type: reserve.')).toBeVisible();
+  await page.getByRole('button', { name: 'Clear filters' }).click();
+  await expect(page.getByLabel('Movement Type')).toHaveValue('all');
+});
