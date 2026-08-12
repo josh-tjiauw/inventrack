@@ -60,6 +60,19 @@ const InventoryExplorer = () => {
   const totalReserved = inventory.reduce((sum, lot) => sum + Number(lot.quantity_reserved || 0), 0);
   const lowStockLots = inventory.filter((lot) => Number(lot.quantity_available || 0) <= Number(lot.reorder_point || 0)).length;
   const categories = useMemo(() => new Set(inventory.map((lot) => lot.category)).size, [inventory]);
+  const selectedWarehouseName = warehouses.find((warehouse) => String(warehouse.warehouse_id) === String(warehouseId))?.warehouse_name;
+  const selectedSkuCode = skus.find((sku) => String(sku.sku_id) === String(skuId))?.sku;
+  const activeFilterLabels = [
+    selectedWarehouseName && `Warehouse: ${selectedWarehouseName}`,
+    selectedSkuCode && `SKU: ${selectedSkuCode}`,
+    lowStockOnly && 'Low stock only'
+  ].filter(Boolean);
+
+  const resetFilters = () => {
+    setWarehouseId('all');
+    setSkuId('all');
+    setLowStockOnly(false);
+  };
 
   if (loading) return (
     <div className="loading-container">
@@ -154,6 +167,26 @@ const InventoryExplorer = () => {
 
       <section className="inventory-section">
         <h2>Lot-Level Inventory</h2>
+        {inventory.length === 0 ? (
+          <div className="empty-state-card inventory-empty-state">
+            <h3>No inventory lots match these filters</h3>
+            <p>
+              {activeFilterLabels.length > 0
+                ? `Active filters: ${activeFilterLabels.join(', ')}.`
+                : 'There are no lot-level inventory records to display yet.'}
+            </p>
+            <p>
+              {activeFilterLabels.length > 0
+                ? 'Clear the filters to return to the full inventory view.'
+                : 'Receive stock or load demo data to populate this view.'}
+            </p>
+            {activeFilterLabels.length > 0 && (
+              <button className="retry-button" type="button" onClick={resetFilters}>
+                Clear filters
+              </button>
+            )}
+          </div>
+        ) : (
         <div className="inventory-table-wrapper">
           <table className="inventory-table">
             <thead>
@@ -196,6 +229,7 @@ const InventoryExplorer = () => {
             </tbody>
           </table>
         </div>
+        )}
       </section>
     </div>
   );

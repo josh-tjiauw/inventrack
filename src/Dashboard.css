@@ -381,6 +381,19 @@
   color: #64748b;
 }
 
+.empty-state-card h3 {
+  color: #0f172a;
+  margin: 0 0 8px;
+}
+
+.empty-state-card p {
+  margin: 6px 0 0;
+}
+
+.inventory-empty-state {
+  text-align: left;
+}
+
 .recommendation-type,
 .priority-pill {
   border-radius: 999px;
