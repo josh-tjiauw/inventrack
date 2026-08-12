@@ -246,4 +246,9 @@ test('portfolio flow creates a shipment, receives against a line, exports agains
   await expect(page.locator('.movement-type', { hasText: 'receive' })).toBeVisible();
   await expect(page.locator('.movement-type', { hasText: 'export' })).toBeVisible();
   await expect(page.getByText(/shipment_line #/)).toHaveCount(2);
+
+  await page.goto('/move');
+  await expect(page.getByRole('heading', { name: 'Move Stock' })).toBeVisible();
+  await expect(page.getByText('No destination can fit this move')).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Move Stock' })).toBeDisabled();
 });

@@ -5,6 +5,14 @@ import './MoveStock.css';
 
 const formatNumber = (value) => Number(value || 0).toLocaleString();
 
+const isSameLocation = (location, lot) => {
+  if (location.location_id && lot.location_id) {
+    return String(location.location_id) === String(lot.location_id);
+  }
+
+  return String(location.location_code) === String(lot.location_code);
+};
+
 const MoveStock = () => {
   const [inventory, setInventory] = useState([]);
   const [locations, setLocations] = useState([]);
@@ -53,27 +61,39 @@ const MoveStock = () => {
   }, [loadMoveData]);
 
   const selectedLot = inventory.find((lot) => String(lot.inventory_lot_id) === String(selectedLotId));
+  const requestedQuantity = Math.max(1, Number(quantity || 0));
   const candidateDestinations = useMemo(() => {
     if (!selectedLot) return [];
     return locations
-      .filter((location) => String(location.location_id) !== String(selectedLot.location_id))
+      .filter((location) => !isSameLocation(location, selectedLot))
       .map((location) => {
         const availableCapacity = Number(location.capacity_units || 0) - Number(location.quantity_on_hand || 0);
         return { ...location, availableCapacity };
       })
-      .filter((location) => location.availableCapacity >= Number(quantity || 0))
+      .filter((location) => location.availableCapacity >= requestedQuantity)
       .sort((a, b) => b.availableCapacity - a.availableCapacity || a.location_code.localeCompare(b.location_code));
-  }, [locations, quantity, selectedLot]);
+  }, [locations, requestedQuantity, selectedLot]);
 
   useEffect(() => {
     if (candidateDestinations.length > 0 && !candidateDestinations.some((location) => String(location.location_id) === String(destinationLocationId))) {
       setDestinationLocationId(String(candidateDestinations[0].location_id));
+    } else if (candidateDestinations.length === 0 && destinationLocationId) {
+      setDestinationLocationId('');
     }
   }, [candidateDestinations, destinationLocationId]);
 
+  const selectedDestination = candidateDestinations.find((location) => String(location.location_id) === String(destinationLocationId));
+  const hasMovableInventory = inventory.length > 0;
+  const hasDestinationCapacity = candidateDestinations.length > 0;
+  const moveDisabledReason = !hasMovableInventory
+    ? 'No available inventory lots can be moved yet.'
+    : !hasDestinationCapacity
+      ? `No active destination has ${formatNumber(requestedQuantity)} open unit(s).`
+      : '';
+
   const handleMoveStock = async (event) => {
     event.preventDefault();
-    if (!selectedLot || !destinationLocationId) return;
+    if (!selectedLot || !selectedDestination) return;
 
     try {
       setSubmitting(true);
@@ -120,6 +140,37 @@ const MoveStock = () => {
       {error && <div className="error-container"><p>{error}</p></div>}
       {successMessage && <div className="move-stock-message"><span>✓</span>{successMessage}</div>}
 
+      {!hasMovableInventory ? (
+        <div className="empty-state-card move-stock-empty-state">
+          <h3>No movable stock available</h3>
+          <p>Every inventory lot is fully reserved or has zero available units.</p>
+          <p>Receive stock, reduce reservations, or choose an available lot before starting a move.</p>
+        </div>
+      ) : (
+        <div className="dashboard-summary">
+          <div className="summary-card">
+            <h3>Source Available</h3>
+            <p>{formatNumber(selectedLot?.quantity_available)}</p>
+          </div>
+          <div className="summary-card">
+            <h3>Move Quantity</h3>
+            <p>{formatNumber(requestedQuantity)}</p>
+          </div>
+          <div className="summary-card">
+            <h3>Eligible Destinations</h3>
+            <p>{candidateDestinations.length}</p>
+          </div>
+          <div className="summary-card">
+            <h3>Selected Route</h3>
+            <p className="summary-card-text">
+              {selectedLot && selectedDestination
+                ? `${selectedLot.location_code} to ${selectedDestination.location_code}`
+                : 'Choose a destination'}
+            </p>
+          </div>
+        </div>
+      )}
+
       <section className="inventory-section">
         <h2>Move Details</h2>
         <form className="filter-bar" onSubmit={handleMoveStock}>
@@ -148,6 +199,9 @@ const MoveStock = () => {
           <label>
             Destination Location
             <select value={destinationLocationId} onChange={(event) => setDestinationLocationId(event.target.value)}>
+              {candidateDestinations.length === 0 && (
+                <option value="">No destination with enough capacity</option>
+              )}
               {candidateDestinations.map((location) => (
                 <option key={location.location_id} value={location.location_id}>
                   {location.location_code} · {location.warehouse_name} · {formatNumber(location.availableCapacity)} open
@@ -166,10 +220,13 @@ const MoveStock = () => {
             />
           </label>
 
-          <button className="move-stock-button" type="submit" disabled={!selectedLot || !destinationLocationId || submitting}>
+          <button className="move-stock-button" type="submit" disabled={!selectedLot || !selectedDestination || submitting}>
             {submitting ? 'Moving...' : 'Move Stock'}
           </button>
         </form>
+        {moveDisabledReason && (
+          <p className="move-stock-help">{moveDisabledReason}</p>
+        )}
       </section>
 
       {selectedLot && (
@@ -200,6 +257,18 @@ const MoveStock = () => {
                 </tr>
               </tbody>
             </table>
+          </div>
+        </section>
+      )}
+
+      {selectedLot && !hasDestinationCapacity && (
+        <section className="inventory-section">
+          <div className="empty-state-card move-stock-empty-state">
+            <h3>No destination can fit this move</h3>
+            <p>
+              Lower the quantity below {formatNumber(requestedQuantity)} units or free capacity in another active location.
+            </p>
+            <p>The source location is excluded so stock is only moved to a different bin.</p>
           </div>
         </section>
       )}

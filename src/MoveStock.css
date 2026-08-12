@@ -25,3 +25,13 @@
   background: #94a3b8;
   cursor: not-allowed;
 }
+
+.move-stock-help {
+  color: #64748b;
+  font-weight: 600;
+  margin: 0.75rem 0 0;
+}
+
+.move-stock-empty-state {
+  margin: 1rem 0;
+}
