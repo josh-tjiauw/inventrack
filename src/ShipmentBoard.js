@@ -139,6 +139,15 @@ const ShipmentBoard = () => {
   const inboundCount = shipments.filter((shipment) => shipment.shipment_type === 'inbound').length;
   const outboundCount = shipments.filter((shipment) => shipment.shipment_type === 'outbound').length;
   const openCount = shipments.filter((shipment) => !['completed', 'cancelled'].includes(shipment.status)).length;
+  const activeFilterLabels = [
+    shipmentType !== 'all' && `Type: ${shipmentType}`,
+    status !== 'all' && `Status: ${status.replace('_', ' ')}`
+  ].filter(Boolean);
+
+  const resetFilters = () => {
+    setShipmentType('all');
+    setStatus('all');
+  };
 
   if (loading) return (
     <div className="loading-container">
@@ -285,59 +294,80 @@ const ShipmentBoard = () => {
 
       <section className="inventory-section">
         <h2>Shipment Queue</h2>
-        <div className="shipment-board-list">
-          {shipments.map((shipment) => {
-            const progress = getProgress(shipment);
-            const isExpanded = expandedShipmentId === shipment.shipment_id;
+        {shipments.length === 0 ? (
+          <div className="empty-state-card inventory-empty-state">
+            <h3>No shipments match this queue view</h3>
+            <p>
+              {activeFilterLabels.length > 0
+                ? `Active filters: ${activeFilterLabels.join(', ')}.`
+                : 'There are no inbound or outbound shipments to display yet.'}
+            </p>
+            <p>
+              {activeFilterLabels.length > 0
+                ? 'Clear the filters to return to the full shipment queue.'
+                : 'Create a shipment above to start tracking receive or export progress.'}
+            </p>
+            {activeFilterLabels.length > 0 && (
+              <button className="retry-button" type="button" onClick={resetFilters}>
+                Clear filters
+              </button>
+            )}
+          </div>
+        ) : (
+          <div className="shipment-board-list">
+            {shipments.map((shipment) => {
+              const progress = getProgress(shipment);
+              const isExpanded = expandedShipmentId === shipment.shipment_id;
 
-            return (
-              <article key={shipment.shipment_id} className="shipment-card">
-                <button
-                  className="shipment-card-main"
-                  type="button"
-                  onClick={() => setExpandedShipmentId(isExpanded ? null : shipment.shipment_id)}
-                >
-                  <div>
-                    <span className={`movement-type movement-${shipment.shipment_type === 'inbound' ? 'receive' : 'export'}`}>
-                      {shipment.shipment_type}
-                    </span>
-                    <h3>{shipment.shipment_number}</h3>
-                    <p>{shipment.supplier_or_customer || 'No counterparty listed'}</p>
-                  </div>
-                  <div>
-                    <span className={`status-pill ${shipment.status === 'completed' ? 'status-ok' : 'status-warning'}`}>
-                      {shipment.status.replace('_', ' ')}
-                    </span>
-                    <p className="shipment-meta">Expected {shipment.expected_date || 'TBD'}</p>
-                  </div>
-                  <div className="shipment-progress-block">
-                    <strong>{progress}%</strong>
-                    <div className="capacity-bar">
-                      <div className="fill-level" style={{ width: `${progress}%` }} />
+              return (
+                <article key={shipment.shipment_id} className="shipment-card">
+                  <button
+                    className="shipment-card-main"
+                    type="button"
+                    onClick={() => setExpandedShipmentId(isExpanded ? null : shipment.shipment_id)}
+                  >
+                    <div>
+                      <span className={`movement-type movement-${shipment.shipment_type === 'inbound' ? 'receive' : 'export'}`}>
+                        {shipment.shipment_type}
+                      </span>
+                      <h3>{shipment.shipment_number}</h3>
+                      <p>{shipment.supplier_or_customer || 'No counterparty listed'}</p>
                     </div>
-                    <small>{formatNumber(shipment.total_quantity)} total units</small>
-                  </div>
-                </button>
-
-                {isExpanded && (
-                  <div className="shipment-lines">
-                    {shipment.lines.map((line) => (
-                      <div key={line.shipmentLineId} className="shipment-line-row">
-                        <div>
-                          <strong>{line.sku}</strong>
-                          <p>{line.skuName}</p>
-                        </div>
-                        <span>Qty {formatNumber(line.quantity)}</span>
-                        <span>Received {formatNumber(line.receivedQuantity)}</span>
-                        <span>Exported {formatNumber(line.exportedQuantity)}</span>
+                    <div>
+                      <span className={`status-pill ${shipment.status === 'completed' ? 'status-ok' : 'status-warning'}`}>
+                        {shipment.status.replace('_', ' ')}
+                      </span>
+                      <p className="shipment-meta">Expected {shipment.expected_date || 'TBD'}</p>
+                    </div>
+                    <div className="shipment-progress-block">
+                      <strong>{progress}%</strong>
+                      <div className="capacity-bar">
+                        <div className="fill-level" style={{ width: `${progress}%` }} />
                       </div>
-                    ))}
-                  </div>
-                )}
-              </article>
-            );
-          })}
-        </div>
+                      <small>{formatNumber(shipment.total_quantity)} total units</small>
+                    </div>
+                  </button>
+
+                  {isExpanded && (
+                    <div className="shipment-lines">
+                      {shipment.lines.map((line) => (
+                        <div key={line.shipmentLineId} className="shipment-line-row">
+                          <div>
+                            <strong>{line.sku}</strong>
+                            <p>{line.skuName}</p>
+                          </div>
+                          <span>Qty {formatNumber(line.quantity)}</span>
+                          <span>Received {formatNumber(line.receivedQuantity)}</span>
+                          <span>Exported {formatNumber(line.exportedQuantity)}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </article>
+              );
+            })}
+          </div>
+        )}
       </section>
     </div>
   );
