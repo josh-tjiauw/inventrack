@@ -4,7 +4,7 @@
 
 A PostgreSQL-backed, enterprise-style inventory tracking system built for reliability, scalability, and auditability. This project demonstrates SQL schema design, transaction-safe stock movements, Express API design, React frontend/backend integration, CI, and deployment across Vercel, Render, and Neon.
 
-## 🏗️ Architecture
+## Architecture
 
 ```
 React Frontend (Vercel)
@@ -26,11 +26,11 @@ PostgreSQL (Neon)
 - **CI**: GitHub Actions with disposable PostgreSQL tests
 - **Live Demo**: [https://inventrack-cyan.vercel.app](https://inventrack-cyan.vercel.app)
 
-## 🎯 Problem Statement
+## Problem Statement
 
 Inventory management systems need strict data integrity to prevent errors like negative stock, duplicate ambiguous records, or untraceable inventory edits. Legacy prototypes often store data as loosely shaped JSON or rely on fragile AI logic that’s hard to explain, test, or maintain. This project solves those problems by using a relational PostgreSQL model with constraints, transaction-safe operations, and deterministic rule-based decision making instead of a paid AI API dependency.
 
-## ✅ Solution
+## Solution
 
 - **Relational model**: Companies, users, warehouses, storage locations, SKUs, inventory lots, shipments, shipment lines, and stock movements.
 - **Database constraints**: No negative quantities, reserved cannot exceed on-hand, shipment lines cannot over-receive/over-export, capacity checks, and unique constraints for data integrity.
@@ -38,22 +38,22 @@ Inventory management systems need strict data integrity to prevent errors like n
 - **Deterministic recommendations**: Rule-based capacity, reorder, and expiration alerts replace expensive/unexplainable AI flows.
 - **Deployed and tested**: Frontend on Vercel, backend on Render, PostgreSQL on Neon, CI with disposable database and targeted integration tests.
 
-## 🎨 Features
+## Features
 
-- 📊 Real-time inventory dashboard
-- 📦 Shipment receiving with capacity validation
-- 🚚 Export/shipping with FEFO picking (First Expired, First Out)
-- 🧠 Rule-based storage recommendations (capacity, reorder, expiration)
-- 📈 Warehouse location capacity visualization
-- 🔔 Low stock alerts and reorder suggestions
-- 📱 Responsive React frontend
-- 🔄 Audit trail through stock movement ledger
-- ✅ Transaction-safe stock changes
-- 🧪 CI with disposable PostgreSQL tests
-- 🏗️ Enterprise-style schema and API
-- 📂 Live Vercel + Render deployment
+- Real-time inventory dashboard
+-  Shipment receiving with capacity validation
+-  Export/shipping with FEFO picking (First Expired, First Out)
+-  Rule-based storage recommendations (capacity, reorder, expiration)
+-  Warehouse location capacity visualization
+-  Low stock alerts and reorder suggestions
+-  Responsive React frontend
+-  Audit trail through stock movement ledger
+-  Transaction-safe stock changes
+-  CI with disposable PostgreSQL tests
+-  Enterprise-style schema and API
+-  Live Vercel + Render deployment
 
-## 💻 Local Development
+## Local Development
 
 ### Prerequisites
 
@@ -155,7 +155,7 @@ npm test -- --testPathPattern=postgres-v2
 
 All endpoints are served under `/api/v2/*` with a clean PostgreSQL-backed implementation.
 
-## 📁 Project Structure
+## Project Structure
 
 ```
 inventrack/
@@ -180,7 +180,7 @@ inventrack/
   .github/workflows/ci.yml   # GitHub Actions CI
 ```
 
-## 🔒 Security Notes
+## Security Notes
 
 This app currently runs with legacy routes and v2 API paths. Production deployments should add:
 
@@ -188,13 +188,9 @@ This app currently runs with legacy routes and v2 API paths. Production deployme
 - Company/tenant scoping through auth context rather than query parameters
 - Rate limiting and request signing for sensitive operations
 
-## 📝 License
+## License
 
 This project is not yet published to npm. Feel free to contribute or use it as a portfolio example.
-
-## 🤝 Contributions
-
-Contributions, issues, and feature requests are welcome!
 
 ## 📧 Contact
 
