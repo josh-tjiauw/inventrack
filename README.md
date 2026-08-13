@@ -127,7 +127,7 @@ cd backend
 npm test -- --testPathPattern=postgres-v2
 ```
 
-## 📚 API Endpoints
+## API Endpoints
 
 ### Read API (v2)
 
@@ -192,7 +192,7 @@ This app currently runs with legacy routes and v2 API paths. Production deployme
 
 This project is not yet published to npm. Feel free to contribute or use it as a portfolio example.
 
-## 📧 Contact
+## Contact
 
 - GitHub: [@josh-tjiauw](https://github.com/josh-tjiauw)
 - Live Demo: [https://inventrack-cyan.vercel.app](https://inventrack-cyan.vercel.app)
